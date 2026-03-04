@@ -8,6 +8,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     async function fetchTickets() {
@@ -88,9 +89,11 @@ function App() {
     }
     }; 
 
-    const filteredTickets = filter === 'all' 
-      ? tickets 
-      : tickets.filter(t => t.priority === filter);
+    const filteredTickets = tickets.filter(t => {
+    const matchesPriority = filter === 'all' || t.priority === filter;
+    const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesPriority && matchesSearch;
+    });
 
   return (
     <div className="min-h-screen bg-[#F4F4F4] flex flex-col font-sans">
@@ -115,6 +118,18 @@ function App() {
 
         <main className="flex-1 flex flex-col">
           <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center">
+            
+            <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] w-64 shadow-inner focus-within:border-[#8C1515] transition-all">
+            <Search size={16} className="text-[#4D4F53]" />
+            <input 
+            type="text" 
+            placeholder="Search tickets..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-transparent border-none outline-none text-xs w-full text-[#2E2D29] placeholder-[#4D4F53]"
+            />
+            </div>
+            
             <div>
               <h1 className="text-[#8C1515] text-2xl font-serif font-bold">Support Tickets</h1>
               <p className="text-[#4D4F53] text-sm font-medium uppercase tracking-wider">Information Technology Services</p>
@@ -131,6 +146,7 @@ function App() {
             </select>
             
             </div>
+            
             <button 
               onClick={() => setIsModalOpen(true)}
               className="bg-[#8C1515] text-white px-6 py-2 rounded font-bold hover:bg-[#6b1010] flex items-center gap-2 transition shadow-md">
