@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Stanford Branding Overrides */
+:root {
+  --stanford-cardinal: #8C1515;
+}
+
+body {
+  margin: 0;
+  background-color: #F4F4F4;
+  color: #2E2D29;
+}
+
+.sls-identity-bar {
+  background-color: var(--stanford-cardinal);
+  height: 30px;
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  font-family: sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
