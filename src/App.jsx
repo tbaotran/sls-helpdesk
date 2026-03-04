@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabaseClient';
 // Added CheckCircle2 to imports
-import { LayoutDashboard, User, Settings, Plus, Clock, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
+import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
 
 function App() {
   const [tickets, setTickets] = useState([]);
