@@ -28,6 +28,7 @@ export default function Auth() {
   };
 
   // Step 2: Verify the 6-digit code
+  
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -35,11 +36,11 @@ export default function Auth() {
     const { error } = await supabase.auth.verifyOtp({
       email,
       token,
-      type: 'email',
+      type: 'magiclink', // <--- Change 'email' to 'magiclink'
     });
 
     if (error) {
-      alert("Invalid or expired code. Please try again.");
+      alert("Invalid or expired code. Please try again Bao");
     } 
     // If successful, onAuthStateChange in App.jsx will automatically log the user in
     setLoading(false);
