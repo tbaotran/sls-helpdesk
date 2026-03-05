@@ -219,25 +219,72 @@ function App() {
       </div>
 
       {/* MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-[#2E2D29]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#D2BA92]">
-            <div className="bg-[#8C1515] p-8 text-white relative">
-              <h2 className="text-2xl font-serif font-bold">New Support Request</h2>
-            </div>
-            <form onSubmit={handleCreateTicket} className="p-8 space-y-6">
-              <div>
-                <label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Issue Summary</label>
-                <input name="title" required className="w-full border-b-2 border-[#D2BA92] py-2 focus:border-[#8C1515] outline-none" />
-              </div>
-              <div className="flex justify-end gap-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-xs font-bold uppercase">Cancel</button>
-                <button type="submit" className="bg-[#8C1515] text-white px-10 py-3 rounded-xl font-bold">Submit</button>
-              </div>
-            </form>
-          </div>
+{isModalOpen && (
+  <div className="fixed inset-0 bg-[#2E2D29]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#D2BA92]">
+      {/* Header */}
+      <div className="bg-[#8C1515] p-8 text-white">
+        <h2 className="text-2xl font-serif font-bold">New Support Request</h2>
+        <p className="text-xs opacity-80 uppercase tracking-widest mt-1 font-semibold">Stanford Law School IT</p>
+      </div>
+
+      <form onSubmit={handleCreateTicket} className="p-8 space-y-6">
+        {/* Title Input */}
+        <div>
+          <label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Issue Summary</label>
+          <input 
+            name="title" 
+            required 
+            placeholder="e.g., Classroom Audio issues" 
+            className="w-full border-b-2 border-[#D2BA92] py-2 focus:border-[#8C1515] outline-none transition-colors text-lg" 
+          />
         </div>
-      )}
+
+        {/* Description Input */}
+        <div>
+          <label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Detailed Description</label>
+          <textarea 
+            name="description" 
+            rows="3" 
+            placeholder="Please provide details..." 
+            className="w-full border border-[#D2BA92] rounded-xl p-4 focus:ring-1 focus:ring-[#8C1515] outline-none bg-gray-50 transition-all" 
+          />
+        </div>
+
+        {/* Priority Dropdown */}
+        <div>
+          <label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Priority Level</label>
+          <select 
+            name="priority" 
+            defaultValue="medium" 
+            className="w-full bg-gray-50 border border-[#D2BA92] p-3 rounded-xl outline-none focus:ring-2 focus:ring-[#8C1515]/10"
+          >
+            <option value="low">Low - Routine inquiry</option>
+            <option value="medium">Medium - Standard support</option>
+            <option value="high">High - Urgent / Disruption</option>
+          </select>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-4 pt-4">
+          <button 
+            type="button" 
+            onClick={() => setIsModalOpen(false)} 
+            className="px-6 py-2 text-[#4D4F53] font-bold hover:text-black transition uppercase text-xs"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            className="bg-[#8C1515] text-white px-10 py-3 rounded-xl font-bold hover:bg-[#6b1010] shadow-xl transition-all active:scale-95 text-sm uppercase"
+          >
+            Submit Ticket
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 }
