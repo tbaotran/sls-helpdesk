@@ -6,30 +6,35 @@ import Auth from './Auth';
 function App() {
   const [session, setSession] = useState(null);
   const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true); // Tracking Auth specifically
+  const [dataLoading, setDataLoading] = useState(false); // Tracking Database specifically
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 1. AUTH LOGIC
+  // 1. AUTH LOGIC - Only runs once on mount
   useEffect(() => {
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setAuthLoading(false);
     });
 
+    // Listen for changes (like clicking the Magic Link)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. DATA FETCHING LOGIC (Wrapped correctly in useEffect)
+  // 2. DATA FETCHING LOGIC - Re-runs if session changes
   useEffect(() => {
     if (!session) return;
 
     async function fetchTickets() {
-      setLoading(true);
+      setDataLoading(true);
       const { data, error } = await supabase
         .from('tickets')
         .select('*')
@@ -40,7 +45,7 @@ function App() {
       } else {
         setTickets(data || []);
       }
-      setLoading(false);
+      setDataLoading(false);
     }
     fetchTickets();
   }, [session]);
@@ -103,11 +108,20 @@ function App() {
     return matchesPriority && matchesSearch;
   });
 
-  // GATEKEEPER
+  // 5. THE GATEKEEPER
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center font-serif italic text-[#8C1515]">
+        Verifying Stanford Credentials...
+      </div>
+    );
+  }
+
   if (!session) {
     return <Auth />;
   }
 
+  // 6. MAIN RENDER
   return (
     <div className="min-h-screen bg-[#F4F4F4] flex flex-col font-sans text-[#2E2D29]">
       <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide">
