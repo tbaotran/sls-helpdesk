@@ -59,6 +59,7 @@ function App() {
       description: formData.get('description'),
       priority: formData.get('priority'),
       status: 'open'
+      user_id: session.user.id // Add this to ensure the database knows who owns the ticket
     };
 
     const { data, error } = await supabase.from('tickets').insert([newTicket]).select();
@@ -193,7 +194,7 @@ function App() {
           </header>
 
           <section className="p-8 max-w-5xl mx-auto w-full">
-            {loading ? (
+            {dataloading ? (
               <div className="flex justify-center p-12"><p className="text-gray-500 animate-pulse font-serif italic">Accessing Stanford Secure Database...</p></div>
             ) : filteredTickets.length === 0 ? (
               <div className="text-center p-16 bg-white rounded-2xl border-2 border-dashed border-[#D2BA92]/50 shadow-sm">
