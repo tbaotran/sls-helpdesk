@@ -24,15 +24,13 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [activities, setActivities] = useState([]);
-  const [toast, setToast] = useState(null); // Added missing state
+  const [toast, setToast] = useState(null);
 
-  // Toast Helper
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // 1. AUTH LOGIC
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -46,7 +44,6 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. ROLE FETCHING
   useEffect(() => {
     if (!session) return;
     async function getProfile() {
@@ -56,7 +53,6 @@ function App() {
     getProfile();
   }, [session]);
 
-  // 3. DATA FETCHING
   useEffect(() => {
     if (!session) return;
     async function fetchTickets() {
@@ -70,7 +66,6 @@ function App() {
     fetchTickets();
   }, [session]);
 
-  // 4. ACTIVITY LOG FETCHING
   useEffect(() => {
     if (!selectedTicket) {
       setActivities([]);
@@ -88,7 +83,6 @@ function App() {
     }
     fetchActivities();
 
-    // REAL-TIME LOGS: Listen for new activities while sidebar is open
     const channel = supabase.channel(`logs-${selectedTicket.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ticket_activities', filter: `ticket_id=eq.${selectedTicket.id}` }, 
       (payload) => {
@@ -105,7 +99,6 @@ function App() {
     resolved: tickets.filter(t => t.status === 'resolved').length
   };
 
-  // HANDLERS
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -180,9 +173,15 @@ function App() {
               <span className="text-[10px] uppercase font-black text-[#D2BA92]">{userRole} Access</span>
             </div>
           </div>
-          <nav className="flex-1 px-4"><div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold cursor-default"><LayoutDashboard size={20} /> Dashboard</div></nav>
+          <nav className="flex-1 px-4">
+            <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold cursor-default">
+              <LayoutDashboard size={20} /> Dashboard
+            </div>
+          </nav>
           <div className="p-4 border-t border-white/10">
-            <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition"><LogOut size={20} /> Sign Out</button>
+            <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition">
+              <LogOut size={20} /> Sign Out
+            </button>
           </div>
         </aside>
 
@@ -204,7 +203,9 @@ function App() {
                 <h1 className="text-[#8C1515] text-xl font-serif font-bold">Support Tickets</h1>
                 <p className="text-[#4D4F53] text-[10px] font-black uppercase tracking-widest leading-none">IT Services</p>
               </div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-6 py-2.5 rounded font-bold hover:bg-[#6b1010] flex items-center gap-2 shadow-lg transition-transform active:scale-95"><Plus size={18} /> New Request</button>
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-6 py-2.5 rounded font-bold hover:bg-[#6b1010] flex items-center gap-2 shadow-lg transition-transform active:scale-95">
+                <Plus size={18} /> New Request
+              </button>
             </div>
           </header>
 
@@ -236,7 +237,6 @@ function App() {
           </section>
         </main>
 
-        {/* SIDEBAR */}
         {selectedTicket && (
           <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
@@ -257,7 +257,6 @@ function App() {
                 <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Created<p className="mt-1 text-sm text-black font-medium">{new Date(selectedTicket.created_at).toLocaleDateString()}</p></div>
               </div>
 
-              {/* ACTIVITY LOG SECTION */}
               <div className="pt-6 border-t border-gray-100">
                 <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-5">
@@ -282,7 +281,6 @@ function App() {
         )}
       </div>
 
-      {/* TOAST NOTIFICATION */}
       {toast && (
         <div className="fixed bottom-8 right-8 z-[100] animate-in fade-in slide-in-from-bottom-4">
           <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-[#8C1515]' : 'bg-white border-[#D2BA92] text-[#2E2D29]'}`}>
@@ -290,3 +288,23 @@ function App() {
             <p className="text-sm font-serif italic">{toast.message}</p>
           </div>
         </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-[#2E2D29]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#D2BA92]">
+            <div className="bg-[#8C1515] p-8 text-white"><h2 className="text-2xl font-serif font-bold">New Support Request</h2></div>
+            <form onSubmit={handleCreateTicket} className="p-8 space-y-6">
+              <div><label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Issue Summary</label><input name="title" required className="w-full border-b-2 border-[#D2BA92] py-2 focus:border-[#8C1515] outline-none" /></div>
+              <div><label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Detailed Description</label><textarea name="description" rows="3" className="w-full border border-[#D2BA92] rounded-xl p-4 focus:ring-1 focus:ring-[#8C1515] outline-none bg-gray-50" /></div>
+              <div><label className="block text-xs font-bold text-[#4D4F53] uppercase mb-2">Priority Level</label><select name="priority" defaultValue="medium" className="w-full bg-gray-50 border border-[#D2BA92] p-3 rounded-xl outline-none"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+              <div className="flex justify-end gap-4 pt-4"><button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-xs font-bold uppercase text-gray-400">Cancel</button><button type="submit" className="bg-[#8C1515] text-white px-10 py-3 rounded-xl font-bold uppercase text-xs">Submit Ticket</button></div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;
