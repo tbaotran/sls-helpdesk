@@ -24,6 +24,7 @@ function App() {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [activities, setActivities] = useState([]);
 
   // 1. AUTH LOGIC
   useEffect(() => {
@@ -76,6 +77,26 @@ function App() {
     fetchTickets();
   }, [session]);
 
+// --- ACTIVITY LOG ---
+  useEffect(() => {
+    if (!selectedTicket) {
+      setActivities([]);
+      return;
+    }
+
+    async function fetchActivities() {
+      const { data, error } = await supabase
+        .from('ticket_activities')
+        .select('*')
+        .eq('ticket_id', selectedTicket.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) console.error("Error fetching logs:", error);
+      else setActivities(data || []);
+    }
+    fetchActivities();
+  }, [selectedTicket]); // This ensures it runs whenever a user clicks a different ticket
+
   const stats = {
     total: tickets.length,
     high: tickets.filter(t => t.priority === 'high' && t.status !== 'resolved').length,
@@ -85,33 +106,73 @@ function App() {
 
   // 4. HANDLERS
   const handleCreateTicket = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const newTicket = {
-      title: formData.get('title'),
-      description: formData.get('description'),
-      priority: formData.get('priority'),
-      status: 'open',
-      user_id: session?.user?.id
-    };
-
-    const { data, error } = await supabase.from('tickets').insert([newTicket]).select();
-    if (error) alert(error.message);
-    else {
-      setTickets([data[0], ...tickets]);
-      setIsModalOpen(false);
-    }
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  
+  const newTicket = {
+    title: formData.get('title'),
+    description: formData.get('description'),
+    priority: formData.get('priority'),
+    status: 'open',
+    user_id: session?.user?.id
   };
 
-  const handleResolve = async (id) => {
-    const { error } = await supabase.from('tickets').update({ status: 'resolved' }).eq('id', id);
-    if (error) alert("Permission Denied.");
-    else {
-      setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
-      // Update sidebar if it's currently showing this ticket
-      if (selectedTicket?.id === id) setSelectedTicket({...selectedTicket, status: 'resolved'});
+  // 1. Insert the Ticket
+  const { data, error } = await supabase.from('tickets').insert([newTicket]).select();
+  
+  if (error) {
+    showToast(error.message, "error");
+  } else if (data && data[0]) {
+    // 2. Insert the Activity Log entry
+    await supabase.from('ticket_activities').insert([
+      { 
+        ticket_id: data[0].id, 
+        user_id: session?.user?.id, 
+        action_text: "Ticket created" 
+      }
+    ]);
+
+    // 3. Update UI
+    setTickets([data[0], ...tickets]);
+    setIsModalOpen(false);
+    showToast("Support request submitted!");
+  }
+};
+
+ const handleResolve = async (id) => {
+  // 1. Update the ticket status in Supabase
+  const { error } = await supabase
+    .from('tickets')
+    .update({ status: 'resolved' })
+    .eq('id', id);
+
+  if (error) {
+    // Use our Toast instead of a generic alert
+    showToast("Permission Denied: Only Staff/Admins can resolve.", "error");
+    console.error(error);
+  } else {
+    // 2. LOG THE ACTIVITY: Record who resolved it and when
+    // We don't need to "await" this if we want the UI to feel instant, 
+    // but it's safer to include it here.
+    await supabase.from('ticket_activities').insert([
+      { 
+        ticket_id: id, 
+        user_id: session?.user?.id, 
+        action_text: "Status changed to Resolved" 
+      }
+    ]);
+
+    // 3. UPDATE LOCAL STATE: Keep the UI in sync
+    setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
+    
+    // 4. SYNC SIDEBAR: Update the sidebar if it's currently open
+    if (selectedTicket?.id === id) {
+      setSelectedTicket({ ...selectedTicket, status: 'resolved' });
     }
-  };
+
+    showToast("Ticket marked as Resolved");
+  }
+};
 
   const handleDelete = async (id) => {
     if (window.confirm("Delete ticket permanently?")) {
@@ -205,24 +266,108 @@ function App() {
         </main>
 
         {/* SIDEBAR */}
-        {selectedTicket && (
-          <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right">
-            <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
-              <h2 className="font-serif font-bold text-[#8C1515]">Ticket Details</h2>
-              <button onClick={() => setSelectedTicket(null)} className="text-[10px] font-bold uppercase text-gray-400 hover:text-black">Close</button>
-            </div>
-            <div className="p-8 space-y-6 overflow-y-auto flex-1">
-              <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
-              <h1 className="text-2xl font-serif font-bold text-[#2E2D29] leading-tight mt-2">{selectedTicket.title}</h1>
-              <div className="space-y-1"><label className="text-[10px] font-black text-[#4D4F53] uppercase">Description</label><p className="text-sm text-[#2E2D29] leading-relaxed bg-[#F4F4F4] p-4 rounded-lg italic">"{selectedTicket.description || 'No description provided.'}"</p></div>
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t"><div className="text-xs font-bold uppercase text-gray-400">Status<p className={`mt-1 capitalize ${selectedTicket.status === 'resolved' ? 'text-green-600' : 'text-[#8C1515]'}`}>{selectedTicket.status}</p></div><div className="text-xs font-bold uppercase text-gray-400">Created<p className="mt-1 text-black font-normal">{new Date(selectedTicket.created_at).toLocaleDateString()}</p></div></div>
-              <div className="pt-6 space-y-2">
-                {selectedTicket.status !== 'resolved' && (userRole === 'agent' || userRole === 'admin') && <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-3 rounded-lg font-bold text-[10px] uppercase tracking-widest">Mark Resolved</button>}
-                {userRole === 'admin' && <button onClick={() => handleDelete(selectedTicket.id)} className="w-full border border-red-100 text-red-500 py-3 rounded-lg font-bold text-[10px] uppercase tracking-widest hover:bg-red-50">Delete Ticket</button>}
+{selectedTicket && (
+  <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+    {/* Header */}
+    <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
+      <h2 className="font-serif font-bold text-[#8C1515]">Ticket Details</h2>
+      <button 
+        onClick={() => setSelectedTicket(null)} 
+        className="text-[10px] font-bold uppercase text-gray-400 hover:text-black transition-colors"
+      >
+        Close
+      </button>
+    </div>
+
+    {/* Content Area */}
+    <div className="p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+      {/* Priority & Title */}
+      <div>
+        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>
+          {selectedTicket.priority} Priority
+        </span>
+        <h1 className="text-2xl font-serif font-bold text-[#2E2D29] leading-tight mt-3">
+          {selectedTicket.title}
+        </h1>
+        <p className="text-[10px] text-gray-400 mt-1 font-mono uppercase tracking-widest">Ref: SLS-{selectedTicket.id}</p>
+      </div>
+
+      {/* Description */}
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest">Description</label>
+        <p className="text-sm text-[#2E2D29] leading-relaxed bg-[#F4F4F4] p-4 rounded-xl italic border border-[#D2BA92]/30">
+          "{selectedTicket.description || 'No description provided.'}"
+        </p>
+      </div>
+
+      {/* Status Grid */}
+      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+        <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+          Status
+          <p className={`mt-1 text-sm capitalize font-bold ${selectedTicket.status === 'resolved' ? 'text-green-600' : 'text-[#8C1515]'}`}>
+            {selectedTicket.status}
+          </p>
+        </div>
+        <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">
+          Created
+          <p className="mt-1 text-sm text-black font-medium">
+            {new Date(selectedTicket.created_at).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+
+      {/* --- ACTIVITY LOG SECTION --- */}
+      <div className="pt-6 border-t border-gray-100">
+        <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest block mb-4">
+          Activity Log
+        </label>
+        <div className="space-y-5">
+          {activities.length === 0 ? (
+            <p className="text-xs text-gray-400 italic">No activity recorded yet.</p>
+          ) : (
+            activities.map((log) => (
+              <div key={log.id} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-500">
+                {/* Timeline Dot */}
+                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#D2BA92] shrink-0 shadow-[0_0_0_2px_rgba(210,186,146,0.2)]" />
+                <div>
+                  <p className="text-xs text-[#2E2D29] font-semibold leading-none">
+                    {log.action_text}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
+                    <Clock size={10} />
+                    {new Date(log.created_at).toLocaleString([], { 
+                      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                    })}
+                  </p>
+                </div>
               </div>
-            </div>
-          </aside>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="pt-8 space-y-3">
+        {selectedTicket.status !== 'resolved' && (userRole === 'agent' || userRole === 'admin') && (
+          <button 
+            onClick={() => handleResolve(selectedTicket.id)} 
+            className="w-full bg-[#007C92] text-white py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#005a6a] shadow-lg transition-all active:scale-[0.98]"
+          >
+            Mark Issue as Resolved
+          </button>
         )}
+        {userRole === 'admin' && (
+          <button 
+            onClick={() => handleDelete(selectedTicket.id)} 
+            className="w-full border border-red-100 text-red-500 py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-red-50 transition-colors"
+          >
+            Delete Ticket Permanently
+          </button>
+        )}
+      </div>
+    </div>
+  </aside>
+)}
       </div>
 
       {/* MODAL */}
