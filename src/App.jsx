@@ -4,6 +4,7 @@ import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, Chec
 import Auth from './Auth';
 
 function App() {
+  const [statusFilter, setStatusFilter] = useState('open'); // Default to 'open' to focus on work
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState('user'); 
   const [tickets, setTickets] = useState([]);
@@ -115,9 +116,12 @@ function App() {
   };
 
   const filteredTickets = (tickets || []).filter(t => {
-    const matchesPriority = filter === 'all' || t.priority === filter;
-    const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesPriority && matchesSearch;
+  const matchesPriority = filter === 'all' || t.priority === filter;
+  const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
+  // NEW: Status Filter check
+  const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
+  
+  return matchesPriority && matchesSearch && matchesStatus;
   });
 
   if (authLoading) {
@@ -168,6 +172,30 @@ function App() {
               </div>
             </div>
             
+            <div className="flex items-center gap-2 px-3 py-2 border-l border-gray-200">
+              <span className="text-[10px] font-bold text-[#4D4F53] uppercase">Status:</span>
+            <div className="flex bg-[#F4F4F4] p-1 rounded-md border border-[#D2BA92]">
+              <button 
+                onClick={() => setStatusFilter('open')}
+                className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === 'open' ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}
+              >
+              Open
+              </button>
+              <button 
+                onClick={() => setStatusFilter('resolved')}
+                className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === 'resolved' ? 'bg-white shadow-sm text-green-600' : 'text-gray-400'}`}
+              >
+              Resolved
+              </button>
+              <button 
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === 'all' ? 'bg-white shadow-sm text-[#2E2D29]' : 'text-gray-400'}`}
+              >
+              All
+              </button>
+            </div>
+            </div>
+
             <div className="flex items-center gap-6 text-right">
               <div>
                 <h1 className="text-[#8C1515] text-xl font-serif font-bold leading-tight">Support Tickets</h1>
@@ -184,20 +212,28 @@ function App() {
               <p className="text-[10px] font-black uppercase text-[#4D4F53] tracking-widest">Total</p>
               <p className="text-2xl font-serif font-bold">{stats.total}</p>
             </div>
-            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm">
-              <p className="text-[10px] font-black uppercase text-[#4D4F53] tracking-widest">Active</p>
+            
+            {/* 1. UPDATE: Clickable Active Card */}
+            <div onClick={() => setStatusFilter('open')}
+                className={`p-4 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}
+            >
+            <p className="text-[10px] font-black uppercase text-[#4D4F53] tracking-widest">Active</p>
               <p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p>
             </div>
             <div className={`p-4 rounded-xl shadow-sm border ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}>
               <p className="text-[10px] font-black uppercase text-[#8C1515] tracking-widest">High Priority</p>
               <p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p>
             </div>
-            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm">
+            
+            {/* 2. UPDATE: Clickable Resolved Card */}
+            <div conClick={() => setStatusFilter('resolved')}
+                  className={`p-4 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}
+              >         
               <p className="text-[10px] font-black uppercase text-[#4D4F53] tracking-widest">Resolved</p>
               <p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p>
             </div>
           </div>
-
+          
           <section className="p-8 max-w-5xl mx-auto w-full">
             {dataLoading ? (
               <div className="flex justify-center p-12"><p className="text-gray-500 animate-pulse font-serif italic">Accessing Stanford Database...</p></div>
