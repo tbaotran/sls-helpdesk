@@ -59,7 +59,7 @@ function App() {
       description: formData.get('description'),
       priority: formData.get('priority'),
       status: 'open',
-      user_id: session?.user?.id // Added safety
+      user_id: session.user.id // Added safety
     };
 
     const { data, error } = await supabase.from('tickets').insert([newTicket]).select();
