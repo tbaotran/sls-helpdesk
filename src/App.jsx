@@ -132,11 +132,14 @@ function App() {
     resolved: tickets.filter(t => t.status === 'resolved').length
   };
 
+  // UPDATED FILTER LOGIC: Support for auto-sorting when "High" stat is clicked
   const filteredTickets = (tickets || [])
     .filter(t => {
       const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      // If we specifically clicked high priority, filter those
+      const matchesPriority = statusFilter === 'high' ? t.priority === 'high' : true;
+      return matchesSearch && matchesStatus && matchesPriority;
     });
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-[#8C1515]">Loading Portal...</div>;
@@ -202,17 +205,31 @@ function App() {
           </header>
 
           <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
-            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm"><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
-            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
-            <div className={`p-4 rounded-xl border ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
-            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
+            {/* FIXED: Added onClick to Queue */}
+            <div onClick={() => setStatusFilter('all')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'all' ? 'border-[#8C1515] bg-[#8C1515]/5' : 'bg-white border-[#D2BA92]'}`}>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p>
+                <p className="text-2xl font-serif font-bold">{stats.total}</p>
+            </div>
+            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p>
+                <p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p>
+            </div>
+            {/* FIXED: Added onClick to High Priority */}
+            <div onClick={() => { setStatusFilter('open'); setSortBy('priority'); showToast("Urgency Filter Active"); }} className={`p-4 rounded-xl border cursor-pointer transition-all ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}>
+                <p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p>
+                <p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p>
+            </div>
+            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}>
+                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p>
+                <p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p>
+            </div>
           </div>
 
           <section className="px-4 md:px-8 pb-10 flex-grow">
             <div className="space-y-3">
               {filteredTickets.map(ticket => (
                 <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-gray-50' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
-                  <div className="flex justify-between items-center gap-3 pointer-events-none">
+                  <div className="flex justify-between items-center gap-3">
                     <div className="flex items-center gap-3 truncate">
                       {ticket.status === 'resolved' ? <CheckCircle2 className="text-green-600" size={20} /> : <AlertCircle className="text-red-600" size={20} />}
                       <h3 className={`font-bold font-serif text-base md:text-lg truncate ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3>
@@ -243,16 +260,6 @@ function App() {
                     <li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li>
                   </ul>
                 </nav>
-                <nav aria-label="policy links">
-                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-3 text-white/90">
-                    <li><a href="https://www.stanford.edu/site/terms/" className="hover:underline">Terms of Use</a></li>
-                    <li><a href="https://www.stanford.edu/site/privacy/" className="hover:underline">Privacy</a></li>
-                    <li><a href="https://www.stanford.edu/site/copyright/" className="hover:underline">Copyright</a></li>
-                    <li><a href="https://adminguide.stanford.edu/chapter-1/subsections-5/trademarks" className="hover:underline">Trademarks</a></li>
-                    <li><a href="https://exploredegrees.stanford.edu/nonacademicregulations/nondiscrimination/" className="hover:underline">Non-Discrimination</a></li>
-                    <li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:underline">Accessibility</a></li>
-                  </ul>
-                </nav>
                 <div className="text-white/80 mt-1 italic font-bold">
                   <p>© Stanford University, Stanford, California 94305.</p>
                 </div>
@@ -261,7 +268,6 @@ function App() {
           </footer>
         </main>
 
-        {/* FIXED TICKET DETAIL SIDEBAR - Now correctly positioned relative to main */}
         {selectedTicket && (
           <aside className="fixed inset-0 lg:relative lg:inset-auto lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b flex justify-between items-center bg-[#F4F4F4]">
@@ -283,7 +289,6 @@ function App() {
           </aside>
         )}
 
-        {/* MODAL OVERLAY */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
@@ -297,10 +302,6 @@ function App() {
                   <input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Details</label>
-                  <textarea name="description" rows="3" className="w-full border rounded-xl p-3 bg-gray-50 text-sm" />
-                </div>
-                <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
                   <select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none">
                     <option value="low">Low</option>
@@ -308,10 +309,7 @@ function App() {
                     <option value="high">High</option>
                   </select>
                 </div>
-                <div className="flex justify-end gap-4 pt-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-xs font-bold uppercase text-gray-400">Cancel</button>
-                  <button type="submit" className="bg-[#8C1515] text-white px-10 py-3 rounded-xl font-bold uppercase text-xs shadow-lg transition active:scale-95">Submit</button>
-                </div>
+                <button type="submit" className="w-full bg-[#8C1515] text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg transition active:scale-95">Submit</button>
               </form>
             </div>
           </div>
