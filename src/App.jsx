@@ -145,7 +145,27 @@ function App() {
       ]);
       setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
       if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'resolved' });
-      showToast(`Ticket resolved by ${actorName}`); // Corrected Template Literal
+      showToast(`Ticket resolved by ${actorName}`);
+    }
+  };
+
+  const handleReopen = async (id) => {
+    const { error } = await supabase.from('tickets').update({ status: 'open' }).eq('id', id);
+    if (error) {
+      showToast("Permission Denied", "error");
+    } else {
+      const actorName = session?.user?.email?.split('@')[0];
+      await supabase.from('ticket_activities').insert([
+        { 
+          ticket_id: id, 
+          user_id: session?.user?.id, 
+          action_text: "Ticket re-opened", 
+          actor_name: actorName 
+        }
+      ]);
+      setTickets(tickets.map(t => t.id === id ? { ...t, status: 'open' } : t));
+      if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'open' });
+      showToast(`Ticket re-opened by ${actorName}`);
     }
   };
 
@@ -176,6 +196,7 @@ function App() {
       <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide">Stanford University</div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* SIDEBAR NAVIGATION */}
         <aside className="w-64 bg-[#2E2D29] text-white flex flex-col shadow-xl">
           <div className="p-6">
             <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
@@ -210,6 +231,7 @@ function App() {
           </div>
         </aside>
 
+        {/* MAIN CONTENT AREA */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-4 flex-1">
@@ -262,6 +284,7 @@ function App() {
           </section>
         </main>
 
+        {/* TICKET DETAIL SIDEBAR */}
         {selectedTicket && (
           <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
@@ -282,6 +305,7 @@ function App() {
                 <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Created<p className="mt-1 text-sm text-black font-medium">{new Date(selectedTicket.created_at).toLocaleDateString()}</p></div>
               </div>
 
+              {/* ACTIVITY LOG SECTION */}
               <div className="pt-6 border-t border-gray-100">
                 <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-5">
@@ -299,7 +323,14 @@ function App() {
               </div>
 
               <div className="pt-8 space-y-3">
-                {selectedTicket.status !== 'resolved' && (userRole === 'agent' || userRole === 'admin') && <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#005a6a] shadow-lg">Mark Resolved</button>}
+                {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
+                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#005a6a] shadow-lg">Mark Resolved</button>
+                )}
+                
+                {selectedTicket.status === 'resolved' && (userRole === 'agent' || userRole === 'admin') && (
+                  <button onClick={() => handleReopen(selectedTicket.id)} className="w-full border-2 border-[#007C92] text-[#007C92] py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#007C92]/5 transition-all">Re-open Ticket</button>
+                )}
+
                 {userRole === 'admin' && <button onClick={() => handleDelete(selectedTicket.id)} className="w-full border border-red-100 text-red-500 py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-red-50">Delete Permanently</button>}
               </div>
             </div>
