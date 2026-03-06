@@ -106,6 +106,7 @@ function App() {
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
+    const actorName = session?.user?.email?.split('@')[0];
     const newTicket = {
       title: formData.get('title'),
       description: formData.get('description'),
@@ -120,7 +121,7 @@ function App() {
       showToast(error.message, "error");
     } else if (data && data[0]) {
       await supabase.from('ticket_activities').insert([
-        { ticket_id: data[0].id, user_id: session?.user?.id, action_text: "Ticket created" }
+        { ticket_id: data[0].id, user_id: session?.user?.id, action_text: "Ticket created", actor_name: actorName }
       ]);
       setTickets([data[0], ...tickets]);
       setIsModalOpen(false);
@@ -133,12 +134,18 @@ function App() {
     if (error) {
       showToast("Permission Denied", "error");
     } else {
+      const actorName = session?.user?.email?.split('@')[0];
       await supabase.from('ticket_activities').insert([
-        { ticket_id: id, user_id: session?.user?.id, action_text: "Status changed to Resolved" }
+        { 
+          ticket_id: id, 
+          user_id: session?.user?.id, 
+          action_text: "Status changed to Resolved", 
+          actor_name: actorName 
+        }
       ]);
       setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
       if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'resolved' });
-      showToast("Ticket marked as Resolved");
+      showToast(`Ticket resolved by ${actorName}`); // Corrected Template Literal
     }
   };
 
@@ -169,7 +176,6 @@ function App() {
       <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide">Stanford University</div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR NAVIGATION */}
         <aside className="w-64 bg-[#2E2D29] text-white flex flex-col shadow-xl">
           <div className="p-6">
             <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
@@ -186,7 +192,6 @@ function App() {
           </nav>
 
           <div className="p-4 border-t border-white/10">
-            {/* LAST LOGIN INFO */}
             <div className="px-3 mb-4">
               <p className="text-[9px] uppercase font-black text-gray-500 tracking-[0.2em] mb-1">System Access</p>
               <div className="flex items-center gap-2 text-gray-400">
@@ -205,7 +210,6 @@ function App() {
           </div>
         </aside>
 
-        {/* MAIN CONTENT AREA */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-4 flex-1">
@@ -258,7 +262,6 @@ function App() {
           </section>
         </main>
 
-        {/* TICKET DETAIL SIDEBAR */}
         {selectedTicket && (
           <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
@@ -279,7 +282,6 @@ function App() {
                 <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Created<p className="mt-1 text-sm text-black font-medium">{new Date(selectedTicket.created_at).toLocaleDateString()}</p></div>
               </div>
 
-              {/* ACTIVITY LOG SECTION */}
               <div className="pt-6 border-t border-gray-100">
                 <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-5">
@@ -288,6 +290,7 @@ function App() {
                       <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#D2BA92] shrink-0" />
                       <div>
                         <p className="text-xs text-[#2E2D29] font-semibold leading-none">{log.action_text}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-tighter">By: {log.actor_name || 'System'}</p>
                         <p className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1"><Clock size={10} />{new Date(log.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                     </div>
@@ -304,7 +307,6 @@ function App() {
         )}
       </div>
 
-      {/* FEEDBACK TOAST */}
       {toast && (
         <div className="fixed bottom-8 right-8 z-[100] animate-in fade-in slide-in-from-bottom-4">
           <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-[#8C1515]' : 'bg-white border-[#D2BA92] text-[#2E2D29]'}`}>
@@ -314,7 +316,6 @@ function App() {
         </div>
       )}
 
-      {/* NEW TICKET MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#2E2D29]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#D2BA92]">
