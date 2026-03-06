@@ -212,19 +212,27 @@ function App() {
         {/* Sidebar */}
         <aside className={`fixed lg:relative w-64 h-full bg-[#2E2D29] text-white flex flex-col z-50 transition-transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic tracking-tight">SLS IT Portal</h2>
               <button className="lg:hidden" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
             </div>
+            
+            {/* Sidebar Identity - Email & Role */}
+            <p className="text-[11px] text-gray-400 mb-4 truncate font-medium">
+              {session?.user?.email}
+            </p>
+
             <div className="flex items-center gap-2 px-2 py-1 bg-white/10 rounded border border-white/20 w-fit">
               <ShieldCheck size={12} className="text-[#D2BA92]" />
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#D2BA92]">{userRole} Access</span>
             </div>
           </div>
+
           <nav className="flex-1 px-4 space-y-2">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold"><LayoutDashboard size={20} /> Dashboard</div>
             {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold uppercase text-[10px]"><Download size={18} /> Export Report</button>}
           </nav>
+          
           <div className="p-4 border-t border-white/10 text-gray-400">
             <p className="uppercase font-bold text-gray-500 mb-1 tracking-widest text-[9px]">Last Session</p>
             <div className="flex items-center gap-2 text-[10px] italic mb-4"><Clock size={12} /> {lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Just now'}</div>
@@ -285,8 +293,8 @@ function App() {
           </section>
 
           <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
-            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12">
-              <div className="shrink-0 mb-4 md:mb-0">
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12 text-center md:text-left">
+              <div className="shrink-0">
                 <div className="font-serif text-white flex flex-col">
                   <span className="text-[44px] font-bold leading-[0.7] tracking-[-0.07em] italic">Stanford</span>
                   <span className="text-[30px] font-bold leading-[1.2] tracking-[-0.02em] italic">University</span>
@@ -314,7 +322,6 @@ function App() {
               </div>
               <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-sm leading-relaxed">"{selectedTicket.description || 'No description provided.'}"</div>
               
-              {/* ACTIVITY LOG SECTION */}
               <div className="pt-6 border-t">
                 <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-4">
@@ -330,7 +337,6 @@ function App() {
                 </div>
               </div>
 
-              {/* ADMIN ACTIONS */}
               <div className="pt-8 border-t space-y-3">
                 {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
                   <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95">Resolve Issue</button>
