@@ -25,6 +25,7 @@ function App() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [activities, setActivities] = useState([]);
   const [toast, setToast] = useState(null);
+  const [lastLogin, setLastLogin] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -47,8 +48,10 @@ function App() {
   useEffect(() => {
     if (!session) return;
     async function getProfile() {
-      const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-      if (data) setUserRole(data.role);
+      const { data } = await supabase.from('profiles').select('role, last_login').eq('id', session.user.id).single();
+      if (data) { setUserRole(data.role);
+                  setLastLogin(data.last_login); 
+                }
     }
     getProfile();
   }, [session]);
@@ -179,6 +182,21 @@ function App() {
             </div>
           </nav>
           <div className="p-4 border-t border-white/10">
+            <div className="p-4 border-t border-white/10">
+  {/* LAST LOGIN INFO */}
+  <div className="px-3 mb-4">
+    <p className="text-[9px] uppercase font-black text-gray-500 tracking-[0.2em] mb-1">
+      System Access
+    </p>
+    <div className="flex items-center gap-2 text-gray-400">
+      <Clock size={12} />
+      <span className="text-[10px] font-medium italic">
+        Last login: {lastLogin ? new Date(lastLogin).toLocaleString([], { 
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+        }) : 'First session'}
+      </span>
+    </div>
+  </div>
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition">
               <LogOut size={20} /> Sign Out
             </button>
