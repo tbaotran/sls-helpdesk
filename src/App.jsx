@@ -290,29 +290,50 @@ function App() {
             </div>}
           </section>
 
-          {/* STANFORD GLOBAL FOOTER */}
-          <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0">
-            <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-              <div className="text-center md:text-left">
+          {/* STANFORD GLOBAL FOOTER - REFINED MATCH */}
+          <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12">
+              
+              {/* Stanford Stacked Logo Signature */}
+              <div className="shrink-0">
                 <a href="https://www.stanford.edu" className="hover:no-underline">
-                  <h2 className="font-serif text-3xl font-bold leading-none italic">Stanford<br/>University</h2>
+                  <h2 className="font-serif text-[34px] md:text-[40px] font-bold leading-[0.85] italic tracking-tighter">
+                    Stanford<br/>
+                    <span className="text-[28px] md:text-[32px] tracking-normal">University</span>
+                  </h2>
                 </a>
               </div>
-              <nav aria-label="university footer menu">
-                <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] font-bold uppercase tracking-widest text-white/80">
-                  <li><a href="https://www.stanford.edu" className="hover:text-white hover:underline transition-all">Stanford Home</a></li>
-                  <li><a href="https://visit.stanford.edu/plan/maps.html" className="hover:text-white hover:underline transition-all">Maps & Directions</a></li>
-                  <li><a href="https://www.stanford.edu/search/" className="hover:text-white hover:underline transition-all">Search Stanford</a></li>
-                  <li><a href="https://emergency.stanford.edu" className="hover:text-white hover:underline transition-all">Emergency Info</a></li>
-                </ul>
-              </nav>
-              <div className="text-center md:text-right">
-                <ul className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 text-[10px] text-white/50">
-                  <li><a href="https://www.stanford.edu/site/terms/" className="hover:text-white underline">Terms of Use</a></li>
-                  <li><a href="https://www.stanford.edu/site/privacy/" className="hover:text-white underline">Privacy</a></li>
-                  <li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:text-white underline">Accessibility</a></li>
-                  <li><p>© Stanford University, Stanford, California 94305.</p></li>
-                </ul>
+
+              {/* Links Container */}
+              <div className="flex-1 flex flex-col gap-5 text-center md:text-left">
+                
+                {/* Primary Bold Links */}
+                <nav aria-label="global footer menu">
+                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-8 gap-y-2 text-[15px] font-bold">
+                    <li><a href="https://www.stanford.edu" className="hover:underline transition-all">Stanford Home</a></li>
+                    <li><a href="https://visit.stanford.edu/plan/maps.html" className="hover:underline transition-all">Maps & Directions</a></li>
+                    <li><a href="https://www.stanford.edu/search/" className="hover:underline transition-all">Search Stanford</a></li>
+                    <li><a href="https://emergency.stanford.edu" className="hover:underline transition-all">Emergency Info</a></li>
+                  </ul>
+                </nav>
+
+                {/* Secondary Policy Links */}
+                <nav aria-label="policy links">
+                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2 text-[13px] text-white/90">
+                    <li><a href="https://www.stanford.edu/site/terms/" className="hover:underline">Terms of Use</a></li>
+                    <li><a href="https://www.stanford.edu/site/privacy/" className="hover:underline">Privacy</a></li>
+                    <li><a href="https://www.stanford.edu/site/copyright/" className="hover:underline">Copyright</a></li>
+                    <li><a href="https://adminguide.stanford.edu/chapter-1/subsections-5/trademarks" className="hover:underline">Trademarks</a></li>
+                    <li><a href="https://exploredegrees.stanford.edu/nonacademicregulations/nondiscrimination/" className="hover:underline">Non-Discrimination</a></li>
+                    <li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:underline">Accessibility</a></li>
+                  </ul>
+                </nav>
+
+                {/* Copyright Line */}
+                <div className="text-[13px] text-white/90 mt-1">
+                  <p>© Stanford University. &nbsp; Stanford, California 94305.</p>
+                </div>
+
               </div>
             </div>
           </footer>
