@@ -19,7 +19,7 @@ function App() {
   const [tickets, setTickets] = useState([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Modal trigger
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -71,7 +71,6 @@ function App() {
     fetchTickets();
   }, [session]);
 
-  // RESTORED: Ticket Creation Logic
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -89,7 +88,7 @@ function App() {
       showToast(error.message, "error"); 
     } else if (data && data[0]) {
       setTickets([data[0], ...tickets]);
-      setIsModalOpen(false); // Close modal on success
+      setIsModalOpen(false);
       showToast("Support request submitted!");
     }
   };
@@ -98,6 +97,7 @@ function App() {
     const { error } = await supabase.from('tickets').update({ status: 'resolved' }).eq('id', id);
     if (!error) {
       setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
+      if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'resolved' });
       showToast("Ticket marked as resolved");
     }
   };
@@ -114,7 +114,6 @@ function App() {
     link.click();
   };
 
-  // Pull-to-Refresh Handlers
   const handleTouchStart = (e) => { if (e.currentTarget.scrollTop === 0) touchStart.current = e.targetTouches[0].pageY; };
   const handleTouchMove = (e) => {
     if (touchStart.current === 0) return;
@@ -151,13 +150,11 @@ function App() {
         .font-serif { font-family: 'Source Serif 4', serif !important; }
       `}</style>
 
-      {/* Identity Bar */}
       <div className="bg-[#8C1515] h-[30px] flex items-center px-4 md:px-8 text-white text-[11px] md:text-[13px] font-bold uppercase tracking-wide shrink-0 z-50">
         Stanford University
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Sidebar */}
         <aside className={`fixed lg:relative w-64 h-full bg-[#2E2D29] text-white flex flex-col z-50 transition-transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
@@ -174,10 +171,10 @@ function App() {
             {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold uppercase text-[11px]"><Download size={18} /> Export Report</button>}
           </nav>
           <div className="p-4 border-t border-white/10">
-            <div className="px-3 mb-4">
-              <p className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mb-1">Last Session</p>
-              <div className="flex items-center gap-2 text-gray-400">
-                <Clock size={12} /><span className="text-[10px] italic">{lastLogin ? new Date(lastLogin).toLocaleString() : 'Just now'}</span>
+            <div className="px-3 mb-4 text-gray-400 text-[10px]">
+              <p className="uppercase font-bold text-gray-500 mb-1 tracking-widest text-[9px]">Last Session</p>
+              <div className="flex items-center gap-2 italic">
+                <Clock size={12} /> {lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Just now'}
               </div>
             </div>
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition font-bold"><LogOut size={20} /> Sign Out</button>
@@ -191,7 +188,7 @@ function App() {
             <div className="flex items-center gap-4 w-full md:w-auto">
               <button className="lg:hidden p-2 bg-gray-50 rounded border" onClick={() => setIsSidebarOpen(true)}><Menu size={20} /></button>
               <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] flex-1 md:w-64">
-                <Search size={16} /><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full" />
+                <Search size={16} /><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full font-bold" />
               </div>
             </div>
             <div className="flex items-center justify-between w-full md:w-auto gap-4">
@@ -204,7 +201,7 @@ function App() {
             </div>
           </header>
 
-          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
             <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm"><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
             <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
             <div className={`p-4 rounded-xl border ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
@@ -214,8 +211,8 @@ function App() {
           <section className="px-4 md:px-8 pb-10 flex-grow">
             <div className="space-y-3">
               {filteredTickets.map(ticket => (
-                <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
-                  <div className="flex justify-between items-center gap-3">
+                <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-gray-50' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
+                  <div className="flex justify-between items-center gap-3 pointer-events-none">
                     <div className="flex items-center gap-3 truncate">
                       {ticket.status === 'resolved' ? <CheckCircle2 className="text-green-600" size={20} /> : <AlertCircle className="text-red-600" size={20} />}
                       <h3 className={`font-bold font-serif text-base md:text-lg truncate ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3>
@@ -227,7 +224,6 @@ function App() {
             </div>
           </section>
 
-          {/* OFFICIAL FULL STANFORD GLOBAL FOOTER */}
           <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12">
               <div className="shrink-0 mb-4 md:mb-0">
@@ -238,9 +234,9 @@ function App() {
                   </div>
                 </a>
               </div>
-              <div className="flex-1 flex flex-col gap-6 text-center md:text-left">
+              <div className="flex-1 flex flex-col gap-6 text-center md:text-left text-[14px]">
                 <nav aria-label="global footer menu">
-                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-10 gap-y-3 text-[16px] font-bold">
+                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-10 gap-y-3 font-bold">
                     <li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li>
                     <li><a href="https://visit.stanford.edu/plan/maps.html" className="hover:underline">Maps & Directions</a></li>
                     <li><a href="https://www.stanford.edu/search/" className="hover:underline">Search Stanford</a></li>
@@ -248,7 +244,7 @@ function App() {
                   </ul>
                 </nav>
                 <nav aria-label="policy links">
-                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-3 text-[14px] text-white/90">
+                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-3 text-white/90">
                     <li><a href="https://www.stanford.edu/site/terms/" className="hover:underline">Terms of Use</a></li>
                     <li><a href="https://www.stanford.edu/site/privacy/" className="hover:underline">Privacy</a></li>
                     <li><a href="https://www.stanford.edu/site/copyright/" className="hover:underline">Copyright</a></li>
@@ -257,7 +253,7 @@ function App() {
                     <li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:underline">Accessibility</a></li>
                   </ul>
                 </nav>
-                <div className="text-[14px] text-white/80 mt-1 italic">
+                <div className="text-white/80 mt-1 italic font-bold">
                   <p>© Stanford University, Stanford, California 94305.</p>
                 </div>
               </div>
@@ -265,40 +261,71 @@ function App() {
           </footer>
         </main>
 
-        {/* RESTORED MODAL: Fixed the non-responsive button issue */}
+        {/* FIXED TICKET DETAIL SIDEBAR - Now correctly positioned relative to main */}
+        {selectedTicket && (
+          <aside className="fixed inset-0 lg:relative lg:inset-auto lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-6 border-b flex justify-between items-center bg-[#F4F4F4]">
+              <h2 className="font-serif font-bold text-xl text-[#8C1515]">Request Details</h2>
+              <button onClick={() => setSelectedTicket(null)} className="p-2 bg-gray-200 rounded-full lg:bg-transparent lg:p-0"><X size={24} /></button>
+            </div>
+            <div className="p-6 md:p-10 space-y-8 overflow-y-auto flex-1 font-sans">
+              <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
+              <h1 className="text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-4">{selectedTicket.title}</h1>
+              <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-base leading-relaxed">"{selectedTicket.description || 'No description provided.'}"</div>
+              
+              <div className="pt-8 border-t flex flex-col gap-4">
+                {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
+                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95">Resolve Issue</button>
+                )}
+                <button onClick={() => setSelectedTicket(null)} className="w-full border-2 border-gray-200 py-3 rounded-xl font-bold lg:hidden uppercase text-xs">Close Details</button>
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* MODAL OVERLAY */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
               <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center">
-                <h2 className="text-2xl font-bold italic">Submit New Request</h2>
+                <h2 className="text-2xl font-bold italic">New Support Request</h2>
                 <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
               </div>
               <form onSubmit={handleCreateTicket} className="p-6 space-y-5 font-sans">
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Issue Subject</label>
-                  <input name="title" required className="w-full border-b-2 py-2 outline-none font-bold" />
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label>
+                  <input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Details</label>
                   <textarea name="description" rows="3" className="w-full border rounded-xl p-3 bg-gray-50 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Urgency</label>
-                  <select name="priority" className="w-full border rounded-xl p-2 font-bold bg-white">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
+                  <select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none">
                     <option value="low">Low</option>
                     <option value="medium" selected>Medium</option>
                     <option value="high">High</option>
                   </select>
                 </div>
                 <div className="flex justify-end gap-4 pt-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-bold uppercase text-gray-400">Cancel</button>
-                  <button type="submit" className="bg-[#8C1515] text-white px-8 py-3 rounded-xl font-bold uppercase text-xs shadow-lg transition active:scale-95">Submit Request</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-xs font-bold uppercase text-gray-400">Cancel</button>
+                  <button type="submit" className="bg-[#8C1515] text-white px-10 py-3 rounded-xl font-bold uppercase text-xs shadow-lg transition active:scale-95">Submit</button>
                 </div>
               </form>
             </div>
           </div>
         )}
       </div>
+
+      {toast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-10 z-[100] w-[90%] md:w-auto">
+          <div className="bg-white border-2 border-[#D2BA92] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+             <CheckCircle2 size={20} className="text-green-600" />
+             <p className="text-sm font-serif font-bold italic">{toast.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
