@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
-import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw, Filter } from 'lucide-react';
+import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw } from 'lucide-react';
 import Auth from './Auth';
 
 const getPriorityStyles = (priority) => {
@@ -74,7 +74,6 @@ function App() {
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const actorName = session?.user?.email?.split('@')[0];
     const newTicket = { 
       title: formData.get('title'), 
       description: formData.get('description'), 
@@ -82,11 +81,9 @@ function App() {
       status: 'open', 
       user_id: session?.user?.id 
     };
-    
     const { data, error } = await supabase.from('tickets').insert([newTicket]).select();
-    if (error) { 
-      showToast(error.message, "error"); 
-    } else if (data && data[0]) {
+    if (error) { showToast(error.message, "error"); } 
+    else if (data && data[0]) {
       setTickets([data[0], ...tickets]);
       setIsModalOpen(false);
       showToast("Support request submitted!");
@@ -100,18 +97,6 @@ function App() {
       if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'resolved' });
       showToast("Ticket marked as resolved");
     }
-  };
-
-  const exportToCSV = async () => {
-    const headers = ["ID", "Title", "Priority", "Status", "Created"];
-    const rows = tickets.map(t => [`SLS-${t.id}`, t.title, t.priority, t.status, new Date(t.created_at).toLocaleDateString()]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `SLS_Export_${new Date().toLocaleDateString()}.csv`;
-    link.click();
   };
 
   const handleTouchStart = (e) => { if (e.currentTarget.scrollTop === 0) touchStart.current = e.targetTouches[0].pageY; };
@@ -132,14 +117,22 @@ function App() {
     resolved: tickets.filter(t => t.status === 'resolved').length
   };
 
-  // UPDATED FILTER LOGIC: Support for auto-sorting when "High" stat is clicked
   const filteredTickets = (tickets || [])
     .filter(t => {
       const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
+      // REFINED LOGIC: Clicking High Stat now filters strictly for High Priority Open tickets
+      if (statusFilter === 'high') {
+        return matchesSearch && t.status === 'open' && t.priority === 'high';
+      }
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-      // If we specifically clicked high priority, filter those
-      const matchesPriority = statusFilter === 'high' ? t.priority === 'high' : true;
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'priority') {
+        const p = { high: 3, medium: 2, low: 1 };
+        return p[b.priority] - p[a.priority] || new Date(b.created_at) - new Date(a.created_at);
+      }
+      return new Date(b.created_at) - new Date(a.created_at);
     });
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-[#8C1515]">Loading Portal...</div>;
@@ -153,11 +146,13 @@ function App() {
         .font-serif { font-family: 'Source Serif 4', serif !important; }
       `}</style>
 
-      <div className="bg-[#8C1515] h-[30px] flex items-center px-4 md:px-8 text-white text-[11px] md:text-[13px] font-bold uppercase tracking-wide shrink-0 z-50">
+      {/* Identity Bar */}
+      <div className="bg-[#8C1515] h-[30px] flex items-center px-4 md:px-8 text-white text-[11px] md:text-[13px] font-bold uppercase tracking-wide shrink-0 z-50 font-sans">
         Stanford University
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
         <aside className={`fixed lg:relative w-64 h-full bg-[#2E2D29] text-white flex flex-col z-50 transition-transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6">
             <div className="flex justify-between items-center mb-4">
@@ -171,22 +166,20 @@ function App() {
           </div>
           <nav className="flex-1 px-4 space-y-2">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold"><LayoutDashboard size={20} /> Dashboard</div>
-            {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold uppercase text-[11px]"><Download size={18} /> Export Report</button>}
           </nav>
-          <div className="p-4 border-t border-white/10">
-            <div className="px-3 mb-4 text-gray-400 text-[10px]">
-              <p className="uppercase font-bold text-gray-500 mb-1 tracking-widest text-[9px]">Last Session</p>
-              <div className="flex items-center gap-2 italic">
-                <Clock size={12} /> {lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Just now'}
-              </div>
-            </div>
+          <div className="p-4 border-t border-white/10 text-gray-400 text-[10px]">
+            <p className="uppercase font-bold text-gray-500 mb-1 tracking-widest text-[9px]">Last Session</p>
+            <div className="flex items-center gap-2 italic mb-4"><Clock size={12} /> {lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Just now'}</div>
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition font-bold"><LogOut size={20} /> Sign Out</button>
           </div>
         </aside>
 
+        {/* Main Dashboard */}
         <main className="flex-1 flex flex-col overflow-y-auto w-full relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-          <div className="flex justify-center items-center overflow-hidden transition-all bg-gray-100" style={{ height: pullDistance > 0 ? `${pullDistance}px` : (isRefreshing ? '50px' : '0px') }}><RefreshCcw size={20} className={`text-[#8C1515] ${isRefreshing ? 'animate-spin' : ''}`} /></div>
-          
+          <div className="flex justify-center items-center overflow-hidden transition-all bg-gray-100" style={{ height: pullDistance > 0 ? `${pullDistance}px` : (isRefreshing ? '50px' : '0px') }}>
+            <RefreshCcw size={20} className={`text-[#8C1515] ${isRefreshing ? 'animate-spin' : ''}`} />
+          </div>
+
           <header className="bg-white border-b border-[#D2BA92] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-30 shadow-sm font-sans">
             <div className="flex items-center gap-4 w-full md:w-auto">
               <button className="lg:hidden p-2 bg-gray-50 rounded border" onClick={() => setIsSidebarOpen(true)}><Menu size={20} /></button>
@@ -194,35 +187,19 @@ function App() {
                 <Search size={16} /><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full font-bold" />
               </div>
             </div>
-            <div className="flex items-center justify-between w-full md:w-auto gap-4">
-              <div className="flex bg-[#F4F4F4] p-1 rounded-md border border-[#D2BA92] hidden sm:flex">
-                {['open', 'resolved', 'all'].map(s => (
-                  <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
-                ))}
-              </div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> <span className="hidden sm:inline">New Request</span><span className="sm:hidden">New</span></button>
+            <div className="flex bg-[#F4F4F4] p-1 rounded-md border border-[#D2BA92] hidden sm:flex">
+              {['open', 'resolved', 'all'].map(s => (
+                <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
+              ))}
             </div>
+            <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> <span className="hidden sm:inline">New Request</span><span className="sm:hidden">New</span></button>
           </header>
 
           <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
-            {/* FIXED: Added onClick to Queue */}
-            <div onClick={() => setStatusFilter('all')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'all' ? 'border-[#8C1515] bg-[#8C1515]/5' : 'bg-white border-[#D2BA92]'}`}>
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p>
-                <p className="text-2xl font-serif font-bold">{stats.total}</p>
-            </div>
-            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}>
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p>
-                <p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p>
-            </div>
-            {/* FIXED: Added onClick to High Priority */}
-            <div onClick={() => { setStatusFilter('open'); setSortBy('priority'); showToast("Urgency Filter Active"); }} className={`p-4 rounded-xl border cursor-pointer transition-all ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}>
-                <p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p>
-                <p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p>
-            </div>
-            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}>
-                <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p>
-                <p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p>
-            </div>
+            <div onClick={() => setStatusFilter('all')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'all' ? 'border-[#8C1515] bg-[#8C1515]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
+            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
+            <div onClick={() => { setStatusFilter('high'); showToast("Urgency Filter Active"); }} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'high' ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
+            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
           </div>
 
           <section className="px-4 md:px-8 pb-10 flex-grow">
@@ -241,6 +218,7 @@ function App() {
             </div>
           </section>
 
+          {/* OFFICIAL FOOTER */}
           <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12">
               <div className="shrink-0 mb-4 md:mb-0">
@@ -252,22 +230,14 @@ function App() {
                 </a>
               </div>
               <div className="flex-1 flex flex-col gap-6 text-center md:text-left text-[14px]">
-                <nav aria-label="global footer menu">
-                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-10 gap-y-3 font-bold">
-                    <li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li>
-                    <li><a href="https://visit.stanford.edu/plan/maps.html" className="hover:underline">Maps & Directions</a></li>
-                    <li><a href="https://www.stanford.edu/search/" className="hover:underline">Search Stanford</a></li>
-                    <li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li>
-                  </ul>
-                </nav>
-                <div className="text-white/80 mt-1 italic font-bold">
-                  <p>© Stanford University, Stanford, California 94305.</p>
-                </div>
+                <nav><ul className="flex flex-wrap justify-center md:justify-start gap-x-10 font-bold"><li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li><li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li></ul></nav>
+                <p className="text-white/80 italic font-bold">© Stanford University, Stanford, California 94305.</p>
               </div>
             </div>
           </footer>
         </main>
 
+        {/* DETAILS SIDEBAR */}
         {selectedTicket && (
           <aside className="fixed inset-0 lg:relative lg:inset-auto lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b flex justify-between items-center bg-[#F4F4F4]">
@@ -278,10 +248,9 @@ function App() {
               <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
               <h1 className="text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-4">{selectedTicket.title}</h1>
               <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-base leading-relaxed">"{selectedTicket.description || 'No description provided.'}"</div>
-              
               <div className="pt-8 border-t flex flex-col gap-4">
                 {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
-                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95">Resolve Issue</button>
+                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg">Resolve Issue</button>
                 )}
                 <button onClick={() => setSelectedTicket(null)} className="w-full border-2 border-gray-200 py-3 rounded-xl font-bold lg:hidden uppercase text-xs">Close Details</button>
               </div>
@@ -289,27 +258,15 @@ function App() {
           </aside>
         )}
 
+        {/* MODAL */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
-              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center">
-                <h2 className="text-2xl font-bold italic">New Support Request</h2>
-                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
-              </div>
+              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center"><h2 className="text-2xl font-bold italic">New Support Request</h2><button onClick={() => setIsModalOpen(false)}><X size={24} /></button></div>
               <form onSubmit={handleCreateTicket} className="p-6 space-y-5 font-sans">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label>
-                  <input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
-                  <select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none">
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-                <button type="submit" className="w-full bg-[#8C1515] text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg transition active:scale-95">Submit</button>
+                <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label><input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" /></div>
+                <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label><select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+                <button type="submit" className="w-full bg-[#8C1515] text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg">Submit</button>
               </form>
             </div>
           </div>
@@ -318,10 +275,7 @@ function App() {
 
       {toast && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-10 z-[100] w-[90%] md:w-auto">
-          <div className="bg-white border-2 border-[#D2BA92] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
-             <CheckCircle2 size={20} className="text-green-600" />
-             <p className="text-sm font-serif font-bold italic">{toast.message}</p>
-          </div>
+          <div className="bg-white border-2 border-[#D2BA92] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"><CheckCircle2 size={20} className="text-green-600" /><p className="text-sm font-serif font-bold italic">{toast.message}</p></div>
         </div>
       )}
     </div>
