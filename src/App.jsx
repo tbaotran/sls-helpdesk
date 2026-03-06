@@ -267,15 +267,39 @@ function App() {
             {dataLoading ? <div className="text-center p-12 animate-pulse italic font-serif text-gray-400">Loading Stanford Data...</div> : 
             <div className="space-y-4">
               {filteredTickets.map(ticket => (
-                <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-[#F4F4F4]' : ''} ${ticket.priority === 'high' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
+                <div 
+                  key={ticket.id} 
+                  onClick={() => setSelectedTicket(ticket)} 
+                  className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                    selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-[#F4F4F4]' : ''
+                  } ${ticket.priority === 'high' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}
+                >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-lg ${ticket.status === 'resolved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{ticket.status === 'resolved' ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}</div>
-                      <div><h3 className={`font-bold font-serif text-lg ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3><span className="text-[10px] text-gray-400 font-bold uppercase">SLS-{ticket.id}</span></div>
+                      <div className={`p-2 rounded-lg ${ticket.status === 'resolved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        {ticket.status === 'resolved' ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h3 className={`font-bold font-serif text-lg ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>
+                            {ticket.title}
+                          </h3>
+                          {ticket.status !== 'resolved' && (
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${getPriorityStyles(ticket.priority)}`}>
+                              {ticket.priority}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">SLS-{ticket.id}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      {(userRole === 'agent' || userRole === 'admin') && ticket.status !== 'resolved' && <button onClick={(e) => { e.stopPropagation(); handleResolve(ticket.id); }} className="text-[10px] font-bold text-[#007C92] border border-[#007C92] px-4 py-1.5 rounded hover:bg-[#007C92] hover:text-white uppercase transition">Resolve</button>}
-                      {userRole === 'admin' && <button onClick={(e) => { e.stopPropagation(); handleDelete(ticket.id); }} className="text-gray-300 hover:text-red-600 p-1"><Trash2 size={18} /></button>}
+                      {(userRole === 'agent' || userRole === 'admin') && ticket.status !== 'resolved' && (
+                        <button onClick={(e) => { e.stopPropagation(); handleResolve(ticket.id); }} className="text-[10px] font-bold text-[#007C92] border border-[#007C92] px-4 py-1.5 rounded hover:bg-[#007C92] hover:text-white uppercase transition">Resolve</button>
+                      )}
+                      {userRole === 'admin' && (
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(ticket.id); }} className="text-gray-300 hover:text-red-600 p-1"><Trash2 size={18} /></button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -305,7 +329,6 @@ function App() {
                 <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Created<p className="mt-1 text-sm text-black font-medium">{new Date(selectedTicket.created_at).toLocaleDateString()}</p></div>
               </div>
 
-              {/* ACTIVITY LOG SECTION */}
               <div className="pt-6 border-t border-gray-100">
                 <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-5">
