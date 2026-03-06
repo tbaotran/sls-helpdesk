@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
-import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw } from 'lucide-react';
+import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw, Users, ShieldAlert } from 'lucide-react';
 import Auth from './Auth';
 
 const getPriorityStyles = (priority) => {
@@ -12,7 +12,6 @@ const getPriorityStyles = (priority) => {
   }
 };
 
-// Helper for relative time (e.g., "2 mins ago")
 const formatRelativeTime = (date) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
@@ -25,10 +24,12 @@ const formatRelativeTime = (date) => {
 };
 
 function App() {
+  const [activeTab, setActiveTab] = useState('dashboard'); // NEW: Tab state
   const [statusFilter, setStatusFilter] = useState('open'); 
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState('user'); 
   const [tickets, setTickets] = useState([]);
+  const [allUsers, setAllUsers] = useState([]); // NEW: User management state
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,6 +53,26 @@ function App() {
       if (error) throw error;
       setTickets(data || []);
     } catch (err) { console.error(err); } finally { setDataLoading(false); }
+  };
+
+  const fetchAllUsers = async () => {
+    if (userRole !== 'admin') return;
+    setDataLoading(true);
+    try {
+      const { data, error } = await supabase.from('profiles').select('*').order('email', { ascending: true });
+      if (error) throw error;
+      setAllUsers(data || []);
+    } catch (err) { console.error(err); } finally { setDataLoading(false); }
+  };
+
+  const handleUpdateUserRole = async (userId, newRole) => {
+    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+    if (error) {
+      showToast("Failed to update role", "error");
+    } else {
+      setAllUsers(allUsers.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      showToast(`User promoted to ${newRole}`);
+    }
   };
 
   useEffect(() => {
@@ -79,6 +100,11 @@ function App() {
     getProfile();
     fetchTickets();
   }, [session]);
+
+  // Fetch users when switching to management tab
+  useEffect(() => {
+    if (activeTab === 'users') fetchAllUsers();
+  }, [activeTab]);
 
   useEffect(() => {
     if (!selectedTicket) {
@@ -216,12 +242,7 @@ function App() {
               <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic tracking-tight">SLS IT Portal</h2>
               <button className="lg:hidden" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
             </div>
-            
-            {/* Sidebar Identity - Email & Role */}
-            <p className="text-[11px] text-gray-400 mb-4 truncate font-medium">
-              {session?.user?.email}
-            </p>
-
+            <p className="text-[11px] text-gray-400 mb-4 truncate font-medium">{session?.user?.email}</p>
             <div className="flex items-center gap-2 px-2 py-1 bg-white/10 rounded border border-white/20 w-fit">
               <ShieldCheck size={12} className="text-[#D2BA92]" />
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#D2BA92]">{userRole} Access</span>
@@ -229,8 +250,27 @@ function App() {
           </div>
 
           <nav className="flex-1 px-4 space-y-2">
-            <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold"><LayoutDashboard size={20} /> Dashboard</div>
-            {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold uppercase text-[10px]"><Download size={18} /> Export Report</button>}
+            <button 
+              onClick={() => {setActiveTab('dashboard'); setIsSidebarOpen(false);}}
+              className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition ${activeTab === 'dashboard' ? 'bg-[#8C1515] text-white' : 'text-gray-400 hover:bg-white/5'}`}
+            >
+              <LayoutDashboard size={20} /> Dashboard
+            </button>
+            
+            {userRole === 'admin' && (
+              <button 
+                onClick={() => {setActiveTab('users'); setIsSidebarOpen(false);}}
+                className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition ${activeTab === 'users' ? 'bg-[#8C1515] text-white' : 'text-gray-400 hover:bg-white/5'}`}
+              >
+                <Users size={20} /> User Management
+              </button>
+            )}
+
+            {(userRole === 'admin' || userRole === 'agent') && (
+              <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold uppercase text-[10px]">
+                <Download size={18} /> Export Report
+              </button>
+            )}
           </nav>
           
           <div className="p-4 border-t border-white/10 text-gray-400">
@@ -244,53 +284,109 @@ function App() {
           <header className="bg-white border-b border-[#D2BA92] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-30 shadow-sm font-sans">
             <div className="flex items-center gap-4 w-full md:w-auto">
               <button className="lg:hidden p-2 bg-gray-50 rounded border" onClick={() => setIsSidebarOpen(true)}><Menu size={20} /></button>
-              <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] flex-1 md:w-64">
+              <h1 className="text-[#8C1515] text-xl font-serif font-bold uppercase tracking-tight">
+                {activeTab === 'dashboard' ? 'Service Queue' : 'Access Control'}
+              </h1>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] w-64 hidden md:flex">
                 <Search size={16} /><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full font-bold" />
               </div>
-            </div>
-            <div className="flex items-center justify-between w-full md:w-auto gap-4">
-               <div className="flex items-center gap-2 pr-4 border-r border-gray-200 hidden sm:flex">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sort:</span>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-transparent text-[11px] font-bold text-[#8C1515] outline-none cursor-pointer uppercase">
-                  <option value="newest">Newest</option><option value="priority">Priority</option>
-                </select>
-              </div>
-              <div className="flex bg-[#F4F4F4] p-1 rounded-md border border-[#D2BA92] hidden sm:flex">
-                {['open', 'resolved', 'all'].map(s => (
-                  <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
-                ))}
-              </div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> New Request</button>
+              {activeTab === 'dashboard' && (
+                <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> New Request</button>
+              )}
             </div>
           </header>
 
-          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
-            <div onClick={() => setStatusFilter('all')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'all' ? 'border-[#8C1515] bg-[#8C1515]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
-            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
-            <div onClick={() => { setStatusFilter('high'); showToast("Urgency Filter Active"); }} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'high' ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
-            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
-          </div>
+          {/* CONTENT SWITCHER */}
+          {activeTab === 'dashboard' ? (
+            <>
+              <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
+                <div onClick={() => setStatusFilter('all')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'all' ? 'border-[#8C1515] bg-[#8C1515]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
+                <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
+                <div onClick={() => { setStatusFilter('high'); showToast("Urgency Filter Active"); }} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'high' ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
+                <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
+              </div>
 
-          <section className="px-4 md:px-8 pb-10 flex-grow">
-            <div className="space-y-3">
-              {filteredTickets.map(ticket => (
-                <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-gray-50' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
-                  <div className="flex justify-between items-center gap-3">
-                    <div className="flex items-center gap-3 truncate">
-                      {ticket.status === 'resolved' ? <CheckCircle2 className="text-green-600" size={20} /> : <AlertCircle className="text-red-600" size={20} />}
-                      <div className="flex flex-col truncate">
-                        <div className="flex items-center gap-2 truncate">
-                          <h3 className={`font-bold font-serif text-base md:text-lg truncate ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3>
-                          {ticket.status !== 'resolved' && <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full border ${getPriorityStyles(ticket.priority)}`}>{ticket.priority}</span>}
+              <section className="px-4 md:px-8 pb-10 flex-grow">
+                <div className="space-y-3">
+                  {filteredTickets.map(ticket => (
+                    <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-gray-50' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
+                      <div className="flex justify-between items-center gap-3">
+                        <div className="flex items-center gap-3 truncate">
+                          {ticket.status === 'resolved' ? <CheckCircle2 className="text-green-600" size={20} /> : <AlertCircle className="text-red-600" size={20} />}
+                          <div className="flex flex-col truncate">
+                            <div className="flex items-center gap-2 truncate">
+                              <h3 className={`font-bold font-serif text-base md:text-lg truncate ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3>
+                              {ticket.status !== 'resolved' && <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full border ${getPriorityStyles(ticket.priority)}`}>{ticket.priority}</span>}
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-400 shrink-0 uppercase tracking-widest">SLS-{ticket.id}</span>
+                          </div>
                         </div>
-                        <span className="text-[9px] font-bold text-gray-400 shrink-0 uppercase tracking-widest">SLS-{ticket.id}</span>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
+            </>
+          ) : (
+            /* USER MANAGEMENT TAB */
+            <section className="px-4 md:px-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white border-2 border-[#D2BA92] rounded-2xl shadow-sm overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[#F4F4F4] text-[10px] uppercase font-bold text-gray-500 tracking-widest border-b-2 border-[#D2BA92]">
+                    <tr>
+                      <th className="p-4">Stanford Identity</th>
+                      <th className="p-4">Assigned Role</th>
+                      <th className="p-4">Last Active</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {allUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="p-4">
+                          <p className="font-bold text-sm">{user.email}</p>
+                          <p className="text-[10px] text-gray-400 font-mono">{user.id}</p>
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${
+                            user.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
+                            user.role === 'agent' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
+                            'bg-gray-50 text-gray-600 border-gray-200'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="p-4 text-xs text-gray-500 italic">
+                          {user.last_login ? formatRelativeTime(user.last_login) : 'Never'}
+                        </td>
+                        <td className="p-4 text-right">
+                          <select 
+                            value={user.role} 
+                            disabled={user.id === session.user.id}
+                            onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                            className="text-[11px] font-bold bg-[#F4F4F4] border border-[#D2BA92] p-1.5 rounded outline-none cursor-pointer uppercase"
+                          >
+                            <option value="user">User</option>
+                            <option value="agent">Agent</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                <ShieldAlert className="text-amber-600 shrink-0" size={20} />
+                <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                  Changes to user roles take effect immediately. Promoting a user to <span className="underline">Agent</span> allows them to resolve tickets. Promoting to <span className="underline">Admin</span> grants full access to this management suite and database deletion.
+                </p>
+              </div>
+            </section>
+          )}
 
           <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12 text-center md:text-left">
@@ -302,13 +398,13 @@ function App() {
               </div>
               <div className="flex-1 flex flex-col gap-6 text-[14px]">
                 <nav aria-label="global footer menu"><ul className="flex flex-wrap justify-center md:justify-start gap-x-10 font-bold"><li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li><li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li></ul></nav>
-                <nav aria-label="policy links"><ul className="flex flex-wrap justify-center md:justify-start gap-x-6 text-white/90"><li><a href="https://www.stanford.edu/site/terms/" className="hover:underline">Terms</a></li><li><a href="https://www.stanford.edu/site/privacy/" className="hover:underline">Privacy</a></li><li><a href="https://exploredegrees.stanford.edu/nonacademicregulations/nondiscrimination/" className="hover:underline">Non-Discrimination</a></li></ul></nav>
                 <p className="text-white/80 italic font-bold">© Stanford University, Stanford, California 94305.</p>
               </div>
             </div>
           </footer>
         </main>
 
+        {/* Selected Ticket Modal Sidebar (Only show when ticket is selected) */}
         {selectedTicket && (
           <aside className="fixed inset-0 lg:relative lg:inset-auto lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b flex justify-between items-center bg-[#F4F4F4]">
@@ -321,7 +417,6 @@ function App() {
                 <h1 className="text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-4">{selectedTicket.title}</h1>
               </div>
               <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-sm leading-relaxed">"{selectedTicket.description || 'No description provided.'}"</div>
-              
               <div className="pt-6 border-t">
                 <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-4">
@@ -336,7 +431,6 @@ function App() {
                   ))}
                 </div>
               </div>
-
               <div className="pt-8 border-t space-y-3">
                 {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
                   <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95">Resolve Issue</button>
@@ -355,10 +449,7 @@ function App() {
         {isModalOpen && (
           <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
-              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center">
-                <h2 className="text-2xl font-bold italic">New Support Request</h2>
-                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
-              </div>
+              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center"><h2 className="text-2xl font-bold italic">New Support Request</h2><button onClick={() => setIsModalOpen(false)}><X size={24} /></button></div>
               <form onSubmit={handleCreateTicket} className="p-6 space-y-5 font-sans">
                 <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label><input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" /></div>
                 <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
