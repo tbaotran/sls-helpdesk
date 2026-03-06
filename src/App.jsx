@@ -86,7 +86,7 @@ function App() {
     else if (data && data[0]) {
       setTickets([data[0], ...tickets]);
       setIsModalOpen(false);
-      showToast("Support request submitted!");
+      showToast("Request submitted successfully!");
     }
   };
 
@@ -95,7 +95,7 @@ function App() {
     if (!error) {
       setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
       if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'resolved' });
-      showToast("Ticket marked as resolved");
+      showToast("Ticket resolved");
     }
   };
 
@@ -106,7 +106,7 @@ function App() {
     if (distance > 0 && distance < 100) setPullDistance(distance);
   };
   const handleTouchEnd = async () => {
-    if (pullDistance > 70) { setIsRefreshing(true); await fetchTickets(); setIsRefreshing(false); showToast("Dashboard Refreshed"); }
+    if (pullDistance > 70) { setIsRefreshing(true); await fetchTickets(); setIsRefreshing(false); showToast("Syncing with SLS Servers..."); }
     setPullDistance(0); touchStart.current = 0;
   };
 
@@ -120,22 +120,14 @@ function App() {
   const filteredTickets = (tickets || [])
     .filter(t => {
       const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
-      // REFINED LOGIC: Clicking High Stat now filters strictly for High Priority Open tickets
       if (statusFilter === 'high') {
         return matchesSearch && t.status === 'open' && t.priority === 'high';
       }
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
       return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'priority') {
-        const p = { high: 3, medium: 2, low: 1 };
-        return p[b.priority] - p[a.priority] || new Date(b.created_at) - new Date(a.created_at);
-      }
-      return new Date(b.created_at) - new Date(a.created_at);
     });
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-[#8C1515]">Loading Portal...</div>;
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-[#8C1515]">Loading...</div>;
   if (!session) return <Auth />;
 
   return (
@@ -146,7 +138,7 @@ function App() {
         .font-serif { font-family: 'Source Serif 4', serif !important; }
       `}</style>
 
-      {/* Identity Bar */}
+      {/* Top Bar */}
       <div className="bg-[#8C1515] h-[30px] flex items-center px-4 md:px-8 text-white text-[11px] md:text-[13px] font-bold uppercase tracking-wide shrink-0 z-50 font-sans">
         Stanford University
       </div>
@@ -164,17 +156,17 @@ function App() {
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#D2BA92]">{userRole} Access</span>
             </div>
           </div>
-          <nav className="flex-1 px-4 space-y-2">
+          <nav className="flex-1 px-4 space-y-2 font-sans">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold"><LayoutDashboard size={20} /> Dashboard</div>
           </nav>
-          <div className="p-4 border-t border-white/10 text-gray-400 text-[10px]">
+          <div className="p-4 border-t border-white/10 text-gray-400 text-[10px] font-sans">
             <p className="uppercase font-bold text-gray-500 mb-1 tracking-widest text-[9px]">Last Session</p>
             <div className="flex items-center gap-2 italic mb-4"><Clock size={12} /> {lastLogin ? new Date(lastLogin).toLocaleDateString() : 'Just now'}</div>
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition font-bold"><LogOut size={20} /> Sign Out</button>
           </div>
         </aside>
 
-        {/* Main Dashboard */}
+        {/* Dashboard Feed */}
         <main className="flex-1 flex flex-col overflow-y-auto w-full relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
           <div className="flex justify-center items-center overflow-hidden transition-all bg-gray-100" style={{ height: pullDistance > 0 ? `${pullDistance}px` : (isRefreshing ? '50px' : '0px') }}>
             <RefreshCcw size={20} className={`text-[#8C1515] ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -189,68 +181,81 @@ function App() {
             </div>
             <div className="flex bg-[#F4F4F4] p-1 rounded-md border border-[#D2BA92] hidden sm:flex">
               {['open', 'resolved', 'all'].map(s => (
-                <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
+                <button key={s} onClick={() => setStatusFilter(s)} className={`px-4 py-1 text-[11px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
               ))}
             </div>
-            <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> <span className="hidden sm:inline">New Request</span><span className="sm:hidden">New</span></button>
+            <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-5 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> New Request</button>
           </header>
 
-          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
+          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0 font-sans">
             <div onClick={() => setStatusFilter('all')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'all' ? 'border-[#8C1515] bg-[#8C1515]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
             <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
             <div onClick={() => { setStatusFilter('high'); showToast("Urgency Filter Active"); }} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'high' ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
             <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
           </div>
 
-          <section className="px-4 md:px-8 pb-10 flex-grow">
-            <div className="space-y-3">
+          <section className="px-4 md:px-8 pb-10 flex-grow font-sans">
+            <div className="space-y-4">
               {filteredTickets.map(ticket => (
-                <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-gray-50' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
-                  <div className="flex justify-between items-center gap-3">
-                    <div className="flex items-center gap-3 truncate">
-                      {ticket.status === 'resolved' ? <CheckCircle2 className="text-green-600" size={20} /> : <AlertCircle className="text-red-600" size={20} />}
-                      <h3 className={`font-bold font-serif text-base md:text-lg truncate ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3>
+                <div key={ticket.id} onClick={() => setSelectedTicket(ticket)} className={`bg-white border border-[#D2BA92] border-l-8 rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer ${selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/30' : ''} ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}>
+                  <div className="flex justify-between items-center gap-4">
+                    <div className="flex items-center gap-4 overflow-hidden">
+                      {ticket.status === 'resolved' ? <CheckCircle2 className="text-green-600 shrink-0" size={24} /> : <AlertCircle className="text-red-600 shrink-0" size={24} />}
+                      
+                      {/* TICKET DETAILS WITH VISIBLE PRIORITY TAG */}
+                      <div className="flex flex-col truncate">
+                        <div className="flex items-center gap-3 truncate">
+                          <h3 className={`font-bold font-serif text-lg md:text-xl truncate ${ticket.status === 'resolved' ? 'text-gray-300 line-through' : ''}`}>{ticket.title}</h3>
+                          {/* THE VISIBLE PRIORITY TAG IS HERE */}
+                          {ticket.status !== 'resolved' && (
+                            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border shrink-0 ${getPriorityStyles(ticket.priority)}`}>
+                              {ticket.priority} Priority
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">SLS-{ticket.id}</span>
+                      </div>
                     </div>
-                    <span className="text-[9px] font-bold text-gray-400 shrink-0 uppercase tracking-widest">SLS-{ticket.id}</span>
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* OFFICIAL FOOTER */}
-          <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
+          {/* Official Footer */}
+          <footer className="bg-[#8C1515] text-white py-14 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12">
               <div className="shrink-0 mb-4 md:mb-0">
-                <a href="https://www.stanford.edu" className="hover:no-underline border-none">
-                  <div className="font-serif text-white flex flex-col">
-                    <span className="text-[44px] font-bold leading-[0.7] tracking-[-0.07em] italic">Stanford</span>
-                    <span className="text-[30px] font-bold leading-[1.2] tracking-[-0.02em] italic">University</span>
-                  </div>
-                </a>
+                <div className="font-serif text-white flex flex-col">
+                  <span className="text-[44px] font-bold leading-[0.7] tracking-[-0.07em] italic">Stanford</span>
+                  <span className="text-[30px] font-bold leading-[1.2] tracking-[-0.02em] italic">University</span>
+                </div>
               </div>
               <div className="flex-1 flex flex-col gap-6 text-center md:text-left text-[14px]">
-                <nav><ul className="flex flex-wrap justify-center md:justify-start gap-x-10 font-bold"><li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li><li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li></ul></nav>
-                <p className="text-white/80 italic font-bold">© Stanford University, Stanford, California 94305.</p>
+                <nav><ul className="flex flex-wrap justify-center md:justify-start gap-x-10 gap-y-3 font-bold"><li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li><li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li></ul></nav>
+                <nav><ul className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-3 text-white/90"><li><a href="https://www.stanford.edu/site/terms/" className="hover:underline">Terms of Use</a></li><li><a href="https://www.stanford.edu/site/privacy/" className="hover:underline">Privacy</a></li><li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:underline">Accessibility</a></li></ul></nav>
+                <p className="text-white/80 mt-1 italic font-bold">© Stanford University, Stanford, California 94305.</p>
               </div>
             </div>
           </footer>
         </main>
 
-        {/* DETAILS SIDEBAR */}
+        {/* Selected Ticket Modal Sidebar */}
         {selectedTicket && (
-          <aside className="fixed inset-0 lg:relative lg:inset-auto lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="p-6 border-b flex justify-between items-center bg-[#F4F4F4]">
-              <h2 className="font-serif font-bold text-xl text-[#8C1515]">Request Details</h2>
+          <aside className="fixed inset-0 lg:relative lg:inset-auto lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right duration-300 font-sans">
+            <div className="p-8 border-b-2 border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
+              <h2 className="font-serif font-bold text-2xl text-[#8C1515]">Request Details</h2>
               <button onClick={() => setSelectedTicket(null)} className="p-2 bg-gray-200 rounded-full lg:bg-transparent lg:p-0"><X size={24} /></button>
             </div>
-            <div className="p-6 md:p-10 space-y-8 overflow-y-auto flex-1 font-sans">
-              <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
-              <h1 className="text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-4">{selectedTicket.title}</h1>
+            <div className="p-8 md:p-10 space-y-8 overflow-y-auto flex-1">
+              <div>
+                <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
+                <h1 className="text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-5">{selectedTicket.title}</h1>
+              </div>
               <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-base leading-relaxed">"{selectedTicket.description || 'No description provided.'}"</div>
               <div className="pt-8 border-t flex flex-col gap-4">
                 {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
-                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg">Resolve Issue</button>
+                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95">Resolve Issue</button>
                 )}
                 <button onClick={() => setSelectedTicket(null)} className="w-full border-2 border-gray-200 py-3 rounded-xl font-bold lg:hidden uppercase text-xs">Close Details</button>
               </div>
@@ -258,26 +263,24 @@ function App() {
           </aside>
         )}
 
-        {/* MODAL */}
+        {/* Modal for New Ticket */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+          <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100] font-sans">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
-              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center"><h2 className="text-2xl font-bold italic">New Support Request</h2><button onClick={() => setIsModalOpen(false)}><X size={24} /></button></div>
-              <form onSubmit={handleCreateTicket} className="p-6 space-y-5 font-sans">
-                <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label><input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" /></div>
-                <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label><select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
-                <button type="submit" className="w-full bg-[#8C1515] text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg">Submit</button>
+              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center">
+                <h2 className="text-2xl font-bold italic">Submit New Request</h2>
+                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+              </div>
+              <form onSubmit={handleCreateTicket} className="p-8 space-y-6">
+                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Subject</label><input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-xl" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Description</label><textarea name="description" rows="3" className="w-full border rounded-xl p-4 bg-gray-50 text-base" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Urgency</label><select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+                <div className="flex justify-end gap-6 pt-4"><button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-xs font-bold uppercase text-gray-400">Cancel</button><button type="submit" className="bg-[#8C1515] text-white px-10 py-3 rounded-xl font-bold uppercase text-xs shadow-lg">Submit</button></div>
               </form>
             </div>
           </div>
         )}
       </div>
-
-      {toast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-10 z-[100] w-[90%] md:w-auto">
-          <div className="bg-white border-2 border-[#D2BA92] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3"><CheckCircle2 size={20} className="text-green-600" /><p className="text-sm font-serif font-bold italic">{toast.message}</p></div>
-        </div>
-      )}
     </div>
   );
 }
