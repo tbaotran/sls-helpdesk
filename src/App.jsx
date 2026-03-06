@@ -33,17 +33,39 @@ function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- EXPORT TO CSV LOGIC ---
-  const exportToCSV = () => {
-    const headers = ["Ticket ID", "Title", "Priority", "Status", "Created At"];
-    const rows = tickets.map(t => [
-      `SLS-${t.id}`,
-      t.title.replace(/,/g, ""), // Remove commas to avoid breaking CSV format
-      t.priority,
-      t.status,
-      new Date(t.created_at).toLocaleDateString()
-    ]);
+  // --- ADVANCED EXPORT TO CSV (WITH AGENT ATTRIBUTION) ---
+  const exportToCSV = async () => {
+    showToast("Preparing report...");
+    
+    // 1. Fetch resolution activities to find agent names
+    const { data: resolutionLogs } = await supabase
+      .from('ticket_activities')
+      .select('ticket_id, actor_name')
+      .eq('action_text', 'Status changed to Resolved');
 
+    // 2. Create a lookup map: { ticketId: agentName }
+    const resolverMap = {};
+    resolutionLogs?.forEach(log => {
+      resolverMap[log.ticket_id] = log.actor_name;
+    });
+
+    // 3. Define Headers
+    const headers = ["Ticket ID", "Title", "Priority", "Status", "Created At", "Resolved By"];
+
+    // 4. Map Tickets to Rows
+    const rows = tickets.map(t => {
+      const agent = t.status === 'resolved' ? (resolverMap[t.id] || "System") : "";
+      return [
+        `SLS-${t.id}`,
+        t.title.replace(/,/g, ""), // Clean commas
+        t.priority,
+        t.status,
+        new Date(t.created_at).toLocaleDateString(),
+        agent // Resolved By column
+      ];
+    });
+
+    // 5. Generate and Download
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -53,7 +75,7 @@ function App() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Report downloaded successfully");
+    showToast("Report downloaded");
   };
 
   useEffect(() => {
@@ -199,8 +221,6 @@ function App() {
           </div>
           <nav className="flex-1 px-4 space-y-2">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold cursor-default"><LayoutDashboard size={20} /> Dashboard</div>
-            
-            {/* EXPORT BUTTON IN NAV */}
             {(userRole === 'admin' || userRole === 'agent') && (
               <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] hover:bg-white/5 transition rounded-lg">
                 <Download size={20} /> Export Report
