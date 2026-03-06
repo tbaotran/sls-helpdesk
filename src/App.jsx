@@ -49,9 +49,10 @@ function App() {
     if (!session) return;
     async function getProfile() {
       const { data } = await supabase.from('profiles').select('role, last_login').eq('id', session.user.id).single();
-      if (data) { setUserRole(data.role);
-                  setLastLogin(data.last_login); 
-                }
+      if (data) { 
+        setUserRole(data.role);
+        setLastLogin(data.last_login); 
+      }
     }
     getProfile();
   }, [session]);
@@ -168,6 +169,7 @@ function App() {
       <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide">Stanford University</div>
 
       <div className="flex flex-1 overflow-hidden">
+        {/* SIDEBAR NAVIGATION */}
         <aside className="w-64 bg-[#2E2D29] text-white flex flex-col shadow-xl">
           <div className="p-6">
             <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
@@ -176,33 +178,34 @@ function App() {
               <span className="text-[10px] uppercase font-black text-[#D2BA92]">{userRole} Access</span>
             </div>
           </div>
+          
           <nav className="flex-1 px-4">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold cursor-default">
               <LayoutDashboard size={20} /> Dashboard
             </div>
           </nav>
+
           <div className="p-4 border-t border-white/10">
-            <div className="p-4 border-t border-white/10">
-  {/* LAST LOGIN INFO */}
-  <div className="px-3 mb-4">
-    <p className="text-[9px] uppercase font-black text-gray-500 tracking-[0.2em] mb-1">
-      System Access
-    </p>
-    <div className="flex items-center gap-2 text-gray-400">
-      <Clock size={12} />
-      <span className="text-[10px] font-medium italic">
-        Last login: {lastLogin ? new Date(lastLogin).toLocaleString([], { 
-          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-        }) : 'First session'}
-      </span>
-    </div>
-  </div>
+            {/* LAST LOGIN INFO */}
+            <div className="px-3 mb-4">
+              <p className="text-[9px] uppercase font-black text-gray-500 tracking-[0.2em] mb-1">System Access</p>
+              <div className="flex items-center gap-2 text-gray-400">
+                <Clock size={12} />
+                <span className="text-[10px] font-medium italic">
+                  Last login: {lastLogin ? new Date(lastLogin).toLocaleString([], { 
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                  }) : 'First session'}
+                </span>
+              </div>
+            </div>
+            
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition">
               <LogOut size={20} /> Sign Out
             </button>
           </div>
         </aside>
 
+        {/* MAIN CONTENT AREA */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-4 flex-1">
@@ -255,6 +258,7 @@ function App() {
           </section>
         </main>
 
+        {/* TICKET DETAIL SIDEBAR */}
         {selectedTicket && (
           <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
@@ -275,6 +279,7 @@ function App() {
                 <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Created<p className="mt-1 text-sm text-black font-medium">{new Date(selectedTicket.created_at).toLocaleDateString()}</p></div>
               </div>
 
+              {/* ACTIVITY LOG SECTION */}
               <div className="pt-6 border-t border-gray-100">
                 <label className="text-[10px] font-black text-[#4D4F53] uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-5">
@@ -299,6 +304,7 @@ function App() {
         )}
       </div>
 
+      {/* FEEDBACK TOAST */}
       {toast && (
         <div className="fixed bottom-8 right-8 z-[100] animate-in fade-in slide-in-from-bottom-4">
           <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-[#8C1515]' : 'bg-white border-[#D2BA92] text-[#2E2D29]'}`}>
@@ -308,6 +314,7 @@ function App() {
         </div>
       )}
 
+      {/* NEW TICKET MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#2E2D29]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#D2BA92]">
