@@ -71,7 +71,6 @@ function App() {
     fetchTickets();
   }, [session]);
 
-  // Restored Actions (Resolve, Delete, Reopen, Export)
   const handleResolve = async (id) => {
     const { error } = await supabase.from('tickets').update({ status: 'resolved' }).eq('id', id);
     if (!error) {
@@ -92,7 +91,6 @@ function App() {
     link.click();
   };
 
-  // Pull-to-Refresh Handlers
   const handleTouchStart = (e) => { if (e.currentTarget.scrollTop === 0) touchStart.current = e.targetTouches[0].pageY; };
   const handleTouchMove = (e) => {
     if (touchStart.current === 0) return;
@@ -142,32 +140,20 @@ function App() {
               <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
               <button className="lg:hidden" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button>
             </div>
-            
-            {/* RESTORED ROLE BADGE */}
             <div className="flex items-center gap-2 px-2 py-1 bg-white/10 rounded border border-white/20 w-fit">
               <ShieldCheck size={12} className="text-[#D2BA92]" />
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#D2BA92]">{userRole} Access</span>
             </div>
           </div>
-
           <nav className="flex-1 px-4 space-y-2">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold"><LayoutDashboard size={20} /> Dashboard</div>
-            {(userRole === 'admin' || userRole === 'agent') && (
-              <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold font-sans tracking-tight uppercase text-[11px]">
-                <Download size={18} /> Export CSV Report
-              </button>
-            )}
+            {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold font-sans uppercase text-[11px]"><Download size={18} /> Export Report</button>}
           </nav>
-
-          {/* RESTORED LAST LOGIN */}
           <div className="p-4 border-t border-white/10">
             <div className="px-3 mb-4">
               <p className="text-[9px] uppercase font-bold text-gray-500 tracking-[0.2em] mb-1">Last Session</p>
               <div className="flex items-center gap-2 text-gray-400">
-                <Clock size={12} />
-                <span className="text-[10px] font-medium italic">
-                  {lastLogin ? new Date(lastLogin).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                </span>
+                <Clock size={12} /><span className="text-[10px] italic">{lastLogin ? new Date(lastLogin).toLocaleString() : 'Just now'}</span>
               </div>
             </div>
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition font-bold"><LogOut size={20} /> Sign Out</button>
@@ -175,52 +161,30 @@ function App() {
         </aside>
 
         <main className="flex-1 flex flex-col overflow-y-auto w-full relative" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-          {/* Refresh Spinner */}
-          <div className="flex justify-center items-center overflow-hidden transition-all bg-gray-100" style={{ height: pullDistance > 0 ? `${pullDistance}px` : (isRefreshing ? '50px' : '0px') }}>
-            <RefreshCcw size={20} className={`text-[#8C1515] ${isRefreshing ? 'animate-spin' : ''}`} />
-          </div>
-
-          <header className="bg-white border-b border-[#D2BA92] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-30 shadow-sm">
+          <div className="flex justify-center items-center overflow-hidden transition-all bg-gray-100" style={{ height: pullDistance > 0 ? `${pullDistance}px` : (isRefreshing ? '50px' : '0px') }}><RefreshCcw size={20} className={`text-[#8C1515] ${isRefreshing ? 'animate-spin' : ''}`} /></div>
+          
+          <header className="bg-white border-b border-[#D2BA92] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-30 shadow-sm font-sans">
             <div className="flex items-center gap-4 w-full md:w-auto">
               <button className="lg:hidden p-2 bg-gray-50 rounded border" onClick={() => setIsSidebarOpen(true)}><Menu size={20} /></button>
               <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] flex-1 md:w-64">
-                <Search size={16} />
-                <input type="text" placeholder="Search tickets..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full" />
+                <Search size={16} /><input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full" />
               </div>
             </div>
-            
-            {/* RESTORED STATUS FILTERS */}
             <div className="flex items-center justify-between w-full md:w-auto gap-4">
               <div className="flex bg-[#F4F4F4] p-1 rounded-md border border-[#D2BA92] hidden sm:flex">
                 {['open', 'resolved', 'all'].map(s => (
-                  <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>
-                    {s}
-                  </button>
+                  <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
                 ))}
               </div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2">
-                <Plus size={18} /> <span className="hidden sm:inline">New Request</span><span className="sm:hidden">New</span>
-              </button>
+              <button onClick={() => setIsModalOpen(true)} className="bg-[#8C1515] text-white px-4 py-2 rounded font-bold shadow-lg text-sm flex items-center gap-2"><Plus size={18} /> <span className="hidden sm:inline">New Request</span><span className="sm:hidden">New</span></button>
             </div>
           </header>
 
-          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full shrink-0">
-            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm font-sans">
-              <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue Total</p>
-              <p className="text-2xl font-serif font-bold">{stats.total}</p>
-            </div>
-            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}>
-              <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p>
-              <p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p>
-            </div>
-            <div className={`p-4 rounded-xl border ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}>
-              <p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High Priority</p>
-              <p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p>
-            </div>
-            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}>
-              <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Resolved</p>
-              <p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p>
-            </div>
+          <div className="px-4 md:px-8 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm"><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Queue</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
+            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
+            <div className={`p-4 rounded-xl border ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] uppercase font-bold text-[#8C1515] mb-1">High</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
+            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl border cursor-pointer ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Fixed</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
           </div>
 
           <section className="px-4 md:px-8 pb-10 flex-grow">
@@ -239,58 +203,44 @@ function App() {
             </div>
           </section>
 
-          {/* Stanford Official Footer */}
-          <footer className="bg-[#8C1515] text-white py-12 px-6 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
-            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-10">
-              <div className="shrink-0 text-center md:text-left">
-                <div className="font-serif text-white flex flex-col">
-                  <span className="text-[42px] font-bold leading-[0.7] tracking-[-0.07em] italic">Stanford</span>
-                  <span className="text-[28px] font-bold leading-[1.3] tracking-[-0.02em] italic">University</span>
-                </div>
+          {/* OFFICIAL FULL STANFORD GLOBAL FOOTER */}
+          <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0 font-sans">
+            <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-12">
+              <div className="shrink-0 mb-4 md:mb-0">
+                <a href="https://www.stanford.edu" className="hover:no-underline border-none">
+                  <div className="font-serif text-white flex flex-col">
+                    <span className="text-[44px] font-bold leading-[0.7] tracking-[-0.07em] italic">Stanford</span>
+                    <span className="text-[30px] font-bold leading-[1.2] tracking-[-0.02em] italic">University</span>
+                  </div>
+                </a>
               </div>
-              <div className="flex-1 flex flex-col gap-4 text-center md:text-left text-[14px]">
-                <nav><ul className="flex flex-wrap justify-center md:justify-start gap-x-8 font-bold font-sans"><li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li><li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li></ul></nav>
-                <p className="text-white/60 text-[12px] italic">© Stanford University, Stanford, California 94305.</p>
+              <div className="flex-1 flex flex-col gap-6 text-center md:text-left">
+                <nav aria-label="global footer menu">
+                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-10 gap-y-3 text-[16px] font-bold">
+                    <li><a href="https://www.stanford.edu" className="hover:underline">Stanford Home</a></li>
+                    <li><a href="https://visit.stanford.edu/plan/maps.html" className="hover:underline">Maps & Directions</a></li>
+                    <li><a href="https://www.stanford.edu/search/" className="hover:underline">Search Stanford</a></li>
+                    <li><a href="https://emergency.stanford.edu" className="hover:underline">Emergency Info</a></li>
+                  </ul>
+                </nav>
+                <nav aria-label="policy links">
+                  <ul className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-3 text-[14px] text-white/90">
+                    <li><a href="https://www.stanford.edu/site/terms/" className="hover:underline">Terms of Use</a></li>
+                    <li><a href="https://www.stanford.edu/site/privacy/" className="hover:underline">Privacy</a></li>
+                    <li><a href="https://www.stanford.edu/site/copyright/" className="hover:underline">Copyright</a></li>
+                    <li><a href="https://adminguide.stanford.edu/chapter-1/subsections-5/trademarks" className="hover:underline">Trademarks</a></li>
+                    <li><a href="https://exploredegrees.stanford.edu/nonacademicregulations/nondiscrimination/" className="hover:underline">Non-Discrimination</a></li>
+                    <li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:underline">Accessibility</a></li>
+                  </ul>
+                </nav>
+                <div className="text-[14px] text-white/80 mt-1 italic">
+                  <p>© Stanford University, Stanford, California 94305.</p>
+                </div>
               </div>
             </div>
           </footer>
         </main>
-
-        {/* Selected Ticket Modal Sidebar */}
-        {selectedTicket && (
-          <aside className="fixed inset-0 lg:relative lg:w-[450px] bg-white border-l-2 border-[#D2BA92] z-[60] flex flex-col animate-in slide-in-from-right">
-            <div className="p-6 border-b flex justify-between items-center bg-[#F4F4F4]">
-              <h2 className="font-serif font-bold text-lg text-[#8C1515]">Request Details</h2>
-              <button onClick={() => setSelectedTicket(null)} className="p-2 bg-gray-200 rounded-full lg:bg-transparent"><X size={24} /></button>
-            </div>
-            <div className="p-6 md:p-10 space-y-6 overflow-y-auto flex-1 font-sans">
-              <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
-              <h1 className="text-2xl md:text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-4">{selectedTicket.title}</h1>
-              <div className="p-5 bg-gray-50 border border-gray-100 rounded-xl italic text-sm">"{selectedTicket.description || 'No description'}"</div>
-              
-              <div className="pt-6 border-t flex flex-col gap-3">
-                {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
-                  <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg transition-all active:scale-95">Resolve Issue</button>
-                )}
-                <button onClick={() => setSelectedTicket(null)} className="w-full border py-3 rounded-xl font-bold lg:hidden uppercase text-xs">Back to Dashboard</button>
-              </div>
-            </div>
-          </aside>
-        )}
       </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
-            <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center"><h2 className="text-2xl font-bold italic">New Request</h2><button onClick={() => setIsModalOpen(false)}><X size={24} /></button></div>
-            <form onSubmit={handleCreateTicket} className="p-6 space-y-5 font-sans">
-              <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label><input name="title" required className="w-full border-b-2 py-2 outline-none font-bold" /></div>
-              <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label><select name="priority" className="w-full border rounded-xl p-2 font-bold"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-              <button type="submit" className="w-full bg-[#8C1515] text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg">Submit Request</button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
