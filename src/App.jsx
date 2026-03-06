@@ -26,6 +26,7 @@ function App() {
   const [activities, setActivities] = useState([]);
   const [toast, setToast] = useState(null);
   const [lastLogin, setLastLogin] = useState(null);
+  const [sortBy, setSortBy] = useState('newest'); // Added sort state
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -136,12 +137,7 @@ function App() {
     } else {
       const actorName = session?.user?.email?.split('@')[0];
       await supabase.from('ticket_activities').insert([
-        { 
-          ticket_id: id, 
-          user_id: session?.user?.id, 
-          action_text: "Status changed to Resolved", 
-          actor_name: actorName 
-        }
+        { ticket_id: id, user_id: session?.user?.id, action_text: "Status changed to Resolved", actor_name: actorName }
       ]);
       setTickets(tickets.map(t => t.id === id ? { ...t, status: 'resolved' } : t));
       if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'resolved' });
@@ -156,12 +152,7 @@ function App() {
     } else {
       const actorName = session?.user?.email?.split('@')[0];
       await supabase.from('ticket_activities').insert([
-        { 
-          ticket_id: id, 
-          user_id: session?.user?.id, 
-          action_text: "Ticket re-opened", 
-          actor_name: actorName 
-        }
+        { ticket_id: id, user_id: session?.user?.id, action_text: "Ticket re-opened", actor_name: actorName }
       ]);
       setTickets(tickets.map(t => t.id === id ? { ...t, status: 'open' } : t));
       if (selectedTicket?.id === id) setSelectedTicket({ ...selectedTicket, status: 'open' });
@@ -181,12 +172,22 @@ function App() {
     }
   };
 
-  const filteredTickets = (tickets || []).filter(t => {
-    const matchesPriority = filter === 'all' || t.priority === filter;
-    const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-    return matchesPriority && matchesSearch && matchesStatus;
-  });
+  // ADVANCED FILTERING & SORTING LOGIC
+  const filteredTickets = (tickets || [])
+    .filter(t => {
+      const matchesPriority = filter === 'all' || t.priority === filter;
+      const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
+      return matchesPriority && matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'priority') {
+        const priorityWeight = { high: 3, medium: 2, low: 1 };
+        return priorityWeight[b.priority] - priorityWeight[a.priority] || 
+               new Date(b.created_at) - new Date(a.created_at);
+      }
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
 
   if (authLoading) return <div className="min-h-screen bg-[#F4F4F4] flex items-center justify-center font-serif italic text-[#8C1515]">Verifying...</div>;
   if (!session) return <Auth />;
@@ -196,7 +197,6 @@ function App() {
       <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide">Stanford University</div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR NAVIGATION */}
         <aside className="w-64 bg-[#2E2D29] text-white flex flex-col shadow-xl">
           <div className="p-6">
             <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
@@ -205,13 +205,11 @@ function App() {
               <span className="text-[10px] uppercase font-black text-[#D2BA92]">{userRole} Access</span>
             </div>
           </div>
-          
           <nav className="flex-1 px-4">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold cursor-default">
               <LayoutDashboard size={20} /> Dashboard
             </div>
           </nav>
-
           <div className="p-4 border-t border-white/10">
             <div className="px-3 mb-4">
               <p className="text-[9px] uppercase font-black text-gray-500 tracking-[0.2em] mb-1">System Access</p>
@@ -224,18 +222,16 @@ function App() {
                 </span>
               </div>
             </div>
-            
             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-red-400 transition">
               <LogOut size={20} /> Sign Out
             </button>
           </div>
         </aside>
 
-        {/* MAIN CONTENT AREA */}
         <main className="flex-1 flex flex-col overflow-y-auto">
           <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center shadow-sm">
             <div className="flex items-center gap-4 flex-1">
-              <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] w-72">
+              <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] w-64">
                 <Search size={16} className="text-[#4D4F53]" />
                 <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="bg-transparent border-none outline-none text-xs w-full" />
               </div>
@@ -243,6 +239,18 @@ function App() {
                 {['open', 'resolved', 'all'].map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded ${statusFilter === s ? 'bg-white shadow-sm text-[#8C1515]' : 'text-gray-400'}`}>{s}</button>
                 ))}
+              </div>
+              {/* SORT DROPDOWN */}
+              <div className="flex items-center gap-2 pl-4 border-l border-gray-200">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Sort:</span>
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-[10px] font-bold text-[#8C1515] outline-none cursor-pointer uppercase"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="priority">Priority</option>
+                </select>
               </div>
             </div>
             <div className="flex items-center gap-6">
@@ -257,10 +265,25 @@ function App() {
           </header>
 
           <div className="px-8 py-6 grid grid-cols-4 gap-4 max-w-5xl mx-auto w-full">
-            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm"><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Total</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
-            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
-            <div className={`p-4 rounded-xl shadow-sm border ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-[#8C1515] uppercase font-bold mb-1">High Priority</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
-            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Resolved</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
+            <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm">
+              <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Total</p>
+              <p className="text-2xl font-serif font-bold">{stats.total}</p>
+            </div>
+            <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}>
+              <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p>
+              <p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p>
+            </div>
+            <div 
+              onClick={() => { setSortBy('priority'); setStatusFilter('open'); showToast("Urgency sorting active"); }}
+              className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}
+            >
+              <p className="text-[10px] text-[#8C1515] uppercase font-bold mb-1">High Priority</p>
+              <p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p>
+            </div>
+            <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}>
+              <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Resolved</p>
+              <p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p>
+            </div>
           </div>
 
           <section className="p-8 max-w-5xl mx-auto w-full">
@@ -272,7 +295,7 @@ function App() {
                   onClick={() => setSelectedTicket(ticket)} 
                   className={`bg-white border border-[#D2BA92] border-l-4 rounded-xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer ${
                     selectedTicket?.id === ticket.id ? 'ring-2 ring-[#8C1515]/20 bg-[#F4F4F4]' : ''
-                  } ${ticket.priority === 'high' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}
+                  } ${ticket.priority === 'high' && ticket.status !== 'resolved' ? 'border-l-[#8C1515]' : 'border-l-[#D2BA92]'}`}
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
@@ -298,7 +321,7 @@ function App() {
                         <button onClick={(e) => { e.stopPropagation(); handleResolve(ticket.id); }} className="text-[10px] font-bold text-[#007C92] border border-[#007C92] px-4 py-1.5 rounded hover:bg-[#007C92] hover:text-white uppercase transition">Resolve</button>
                       )}
                       {userRole === 'admin' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(ticket.id); }} className="text-gray-300 hover:text-red-600 p-1"><Trash2 size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(ticket.id); }} className="text-gray-300 hover:text-red-600 p-1 transition-colors"><Trash2 size={18} /></button>
                       )}
                     </div>
                   </div>
@@ -308,7 +331,6 @@ function App() {
           </section>
         </main>
 
-        {/* TICKET DETAIL SIDEBAR */}
         {selectedTicket && (
           <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
@@ -349,11 +371,9 @@ function App() {
                 {selectedTicket.status === 'open' && (userRole === 'agent' || userRole === 'admin') && (
                   <button onClick={() => handleResolve(selectedTicket.id)} className="w-full bg-[#007C92] text-white py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#005a6a] shadow-lg">Mark Resolved</button>
                 )}
-                
                 {selectedTicket.status === 'resolved' && (userRole === 'agent' || userRole === 'admin') && (
                   <button onClick={() => handleReopen(selectedTicket.id)} className="w-full border-2 border-[#007C92] text-[#007C92] py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#007C92]/5 transition-all">Re-open Ticket</button>
                 )}
-
                 {userRole === 'admin' && <button onClick={() => handleDelete(selectedTicket.id)} className="w-full border border-red-100 text-red-500 py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-red-50">Delete Permanently</button>}
               </div>
             </div>
