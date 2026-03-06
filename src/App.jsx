@@ -33,39 +33,31 @@ function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- ADVANCED EXPORT TO CSV (WITH AGENT ATTRIBUTION) ---
   const exportToCSV = async () => {
     showToast("Preparing report...");
-    
-    // 1. Fetch resolution activities to find agent names
     const { data: resolutionLogs } = await supabase
       .from('ticket_activities')
       .select('ticket_id, actor_name')
       .eq('action_text', 'Status changed to Resolved');
 
-    // 2. Create a lookup map: { ticketId: agentName }
     const resolverMap = {};
     resolutionLogs?.forEach(log => {
       resolverMap[log.ticket_id] = log.actor_name;
     });
 
-    // 3. Define Headers
     const headers = ["Ticket ID", "Title", "Priority", "Status", "Created At", "Resolved By"];
-
-    // 4. Map Tickets to Rows
     const rows = tickets.map(t => {
       const agent = t.status === 'resolved' ? (resolverMap[t.id] || "System") : "";
       return [
         `SLS-${t.id}`,
-        t.title.replace(/,/g, ""), // Clean commas
+        t.title.replace(/,/g, ""), 
         t.priority,
         t.status,
         new Date(t.created_at).toLocaleDateString(),
-        agent // Resolved By column
+        agent
       ];
     });
 
-    // 5. Generate and Download
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -208,10 +200,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#F4F4F4] flex flex-col font-sans text-[#2E2D29]">
-      <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide">Stanford University</div>
+      <div className="bg-[#8C1515] h-[30px] flex items-center px-8 text-white text-[13px] font-semibold uppercase tracking-wide shrink-0">Stanford University</div>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 bg-[#2E2D29] text-white flex flex-col shadow-xl">
+        <aside className="w-64 bg-[#2E2D29] text-white flex flex-col shadow-xl shrink-0">
           <div className="p-6">
             <h2 className="text-[#D2BA92] text-xl font-serif font-bold italic">SLS IT Portal</h2>
             <div className="mt-2 flex items-center gap-2 px-2 py-1 bg-white/10 rounded border border-white/20 w-fit">
@@ -240,7 +232,7 @@ function App() {
         </aside>
 
         <main className="flex-1 flex flex-col overflow-y-auto">
-          <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center shadow-sm">
+          <header className="bg-white border-b border-[#D2BA92] p-6 flex justify-between items-center shadow-sm shrink-0">
             <div className="flex items-center gap-4 flex-1">
               <div className="flex items-center gap-3 bg-[#F4F4F4] px-4 py-2 rounded-full border border-[#D2BA92] w-64">
                 <Search size={16} className="text-[#4D4F53]" />
@@ -268,14 +260,14 @@ function App() {
             </div>
           </header>
 
-          <div className="px-8 py-6 grid grid-cols-4 gap-4 max-w-5xl mx-auto w-full">
+          <div className="px-8 py-6 grid grid-cols-4 gap-4 max-w-5xl mx-auto w-full shrink-0">
             <div className="bg-white border border-[#D2BA92] p-4 rounded-xl shadow-sm"><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Total</p><p className="text-2xl font-serif font-bold">{stats.total}</p></div>
             <div onClick={() => setStatusFilter('open')} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${statusFilter === 'open' ? 'border-[#007C92] bg-[#007C92]/5' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Active</p><p className="text-2xl font-serif font-bold text-[#007C92]">{stats.open}</p></div>
             <div onClick={() => { setSortBy('priority'); setStatusFilter('open'); showToast("Urgency sorting active"); }} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${stats.high > 0 ? 'bg-red-50 border-[#8C1515]' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-[#8C1515] uppercase font-bold mb-1">High Priority</p><p className="text-2xl font-serif font-bold text-[#8C1515]">{stats.high}</p></div>
             <div onClick={() => setStatusFilter('resolved')} className={`p-4 rounded-xl shadow-sm border cursor-pointer transition-all ${statusFilter === 'resolved' ? 'border-green-600 bg-green-50' : 'bg-white border-[#D2BA92]'}`}><p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Resolved</p><p className="text-2xl font-serif font-bold text-green-600">{stats.resolved}</p></div>
           </div>
 
-          <section className="p-8 max-w-5xl mx-auto w-full">
+          <section className="p-8 max-w-5xl mx-auto w-full flex-grow">
             {dataLoading ? <div className="text-center p-12 animate-pulse italic font-serif text-gray-400">Loading Stanford Data...</div> : 
             <div className="space-y-4">
               {filteredTickets.map(ticket => (
@@ -297,10 +289,37 @@ function App() {
               ))}
             </div>}
           </section>
+
+          {/* STANFORD GLOBAL FOOTER */}
+          <footer className="bg-[#8C1515] text-white py-12 px-8 mt-12 border-t-[5px] border-[#D2BA92] shrink-0">
+            <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+              <div className="text-center md:text-left">
+                <a href="https://www.stanford.edu" className="hover:no-underline">
+                  <h2 className="font-serif text-3xl font-bold leading-none italic">Stanford<br/>University</h2>
+                </a>
+              </div>
+              <nav aria-label="university footer menu">
+                <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] font-bold uppercase tracking-widest text-white/80">
+                  <li><a href="https://www.stanford.edu" className="hover:text-white hover:underline transition-all">Stanford Home</a></li>
+                  <li><a href="https://visit.stanford.edu/plan/maps.html" className="hover:text-white hover:underline transition-all">Maps & Directions</a></li>
+                  <li><a href="https://www.stanford.edu/search/" className="hover:text-white hover:underline transition-all">Search Stanford</a></li>
+                  <li><a href="https://emergency.stanford.edu" className="hover:text-white hover:underline transition-all">Emergency Info</a></li>
+                </ul>
+              </nav>
+              <div className="text-center md:text-right">
+                <ul className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-2 text-[10px] text-white/50">
+                  <li><a href="https://www.stanford.edu/site/terms/" className="hover:text-white underline">Terms of Use</a></li>
+                  <li><a href="https://www.stanford.edu/site/privacy/" className="hover:text-white underline">Privacy</a></li>
+                  <li><a href="https://uit.stanford.edu/accessibility/policy" className="hover:text-white underline">Accessibility</a></li>
+                  <li><p>© Stanford University, Stanford, California 94305.</p></li>
+                </ul>
+              </div>
+            </div>
+          </footer>
         </main>
 
         {selectedTicket && (
-          <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+          <aside className="w-96 bg-white border-l border-[#D2BA92] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 shrink-0">
             <div className="p-6 border-b border-[#D2BA92] flex justify-between items-center bg-[#F4F4F4]">
               <h2 className="font-serif font-bold text-[#8C1515]">Ticket Details</h2>
               <button onClick={() => setSelectedTicket(null)} className="text-[10px] font-bold uppercase text-gray-400 hover:text-black">Close</button>
