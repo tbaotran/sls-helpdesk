@@ -19,7 +19,7 @@ function App() {
   const [tickets, setTickets] = useState([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal trigger
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -71,6 +71,29 @@ function App() {
     fetchTickets();
   }, [session]);
 
+  // RESTORED: Ticket Creation Logic
+  const handleCreateTicket = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const actorName = session?.user?.email?.split('@')[0];
+    const newTicket = { 
+      title: formData.get('title'), 
+      description: formData.get('description'), 
+      priority: formData.get('priority'), 
+      status: 'open', 
+      user_id: session?.user?.id 
+    };
+    
+    const { data, error } = await supabase.from('tickets').insert([newTicket]).select();
+    if (error) { 
+      showToast(error.message, "error"); 
+    } else if (data && data[0]) {
+      setTickets([data[0], ...tickets]);
+      setIsModalOpen(false); // Close modal on success
+      showToast("Support request submitted!");
+    }
+  };
+
   const handleResolve = async (id) => {
     const { error } = await supabase.from('tickets').update({ status: 'resolved' }).eq('id', id);
     if (!error) {
@@ -91,6 +114,7 @@ function App() {
     link.click();
   };
 
+  // Pull-to-Refresh Handlers
   const handleTouchStart = (e) => { if (e.currentTarget.scrollTop === 0) touchStart.current = e.targetTouches[0].pageY; };
   const handleTouchMove = (e) => {
     if (touchStart.current === 0) return;
@@ -147,7 +171,7 @@ function App() {
           </div>
           <nav className="flex-1 px-4 space-y-2">
             <div className="flex items-center gap-3 p-3 bg-[#8C1515] rounded-lg text-white font-bold"><LayoutDashboard size={20} /> Dashboard</div>
-            {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold font-sans uppercase text-[11px]"><Download size={18} /> Export Report</button>}
+            {(userRole === 'admin' || userRole === 'agent') && <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:text-[#D2BA92] transition font-bold uppercase text-[11px]"><Download size={18} /> Export Report</button>}
           </nav>
           <div className="p-4 border-t border-white/10">
             <div className="px-3 mb-4">
@@ -240,6 +264,40 @@ function App() {
             </div>
           </footer>
         </main>
+
+        {/* RESTORED MODAL: Fixed the non-responsive button issue */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-[#2E2D29]/90 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border-2 border-[#D2BA92]">
+              <div className="bg-[#8C1515] p-6 text-white font-serif flex justify-between items-center">
+                <h2 className="text-2xl font-bold italic">Submit New Request</h2>
+                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+              </div>
+              <form onSubmit={handleCreateTicket} className="p-6 space-y-5 font-sans">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Issue Subject</label>
+                  <input name="title" required className="w-full border-b-2 py-2 outline-none font-bold" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Details</label>
+                  <textarea name="description" rows="3" className="w-full border rounded-xl p-3 bg-gray-50 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Urgency</label>
+                  <select name="priority" className="w-full border rounded-xl p-2 font-bold bg-white">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-4 pt-4">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-bold uppercase text-gray-400">Cancel</button>
+                  <button type="submit" className="bg-[#8C1515] text-white px-8 py-3 rounded-xl font-bold uppercase text-xs shadow-lg transition active:scale-95">Submit Request</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
