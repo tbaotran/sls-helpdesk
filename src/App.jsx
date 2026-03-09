@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { supabase } from './lib/supabaseClient';
+// STEP 1: Import both the standard and admin clients
+import { supabase, supabaseAdmin } from './lib/supabaseClient';
 import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw, Users, ShieldAlert, KeyRound, UserPlus } from 'lucide-react';
 import Auth from './Auth';
 
@@ -75,7 +76,7 @@ function App() {
     }
   };
 
-  // ADMIN ACTION: Manual Registration
+  // STEP 2: Update Manual Registration to use supabaseAdmin
   const handleManualRegister = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -88,7 +89,8 @@ function App() {
     }
 
     setDataLoading(true);
-    const { data, error } = await supabase.auth.admin.createUser({
+    // Use the admin client to bypass RLS and auto-confirm
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true 
@@ -104,7 +106,7 @@ function App() {
     setDataLoading(false);
   };
 
-  // ADMIN ACTION: Reset Password
+  // STEP 3: Update Reset Password to use supabaseAdmin
   const handleAdminResetPassword = async (userId) => {
     const newPassword = prompt("Enter a new temporary password for this user:");
     if (!newPassword) return;
@@ -113,7 +115,8 @@ function App() {
       return;
     }
 
-    const { error } = await supabase.auth.admin.updateUserById(userId, {
+    // Use the admin client to update password without a reset link
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: newPassword
     });
 
@@ -548,4 +551,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;"
