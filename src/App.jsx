@@ -14,6 +14,7 @@ const getPriorityStyles = (priority) => {
 };
 
 const formatRelativeTime = (date) => {
+  if (!date) return 'Never';
   const now = new Date();
   const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
   if (diffInSeconds < 60) return 'just now';
@@ -67,6 +68,7 @@ function App() {
   };
 
   const handleUpdateUserRole = async (userId, newRole) => {
+    if (!userId) return;
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
     if (error) {
       showToast("Failed to update role", "error");
@@ -89,6 +91,8 @@ function App() {
 
     setDataLoading(true);
     try {
+      if (!supabaseAdmin) throw new Error("Admin client not initialized. Check your Service Role Key.");
+      
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -108,6 +112,7 @@ function App() {
   };
 
   const handleAdminResetPassword = async (userId) => {
+    if (!userId) return;
     const newPassword = prompt("Enter a new temporary password for this user:");
     if (!newPassword) return;
     if (newPassword.length < 6) {
@@ -276,13 +281,16 @@ function App() {
         .font-serif { font-family: 'Source Serif 4', serif !important; }
       `}</style>
 
+      {/* Identity Bar */}
       <div className="bg-[#8C1515] h-[30px] flex items-center px-4 md:px-8 text-white text-[11px] md:text-[13px] font-bold uppercase tracking-wide shrink-0 z-50">
         Stanford University
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Overlay */}
         {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
+        {/* Sidebar */}
         <aside className={`fixed lg:relative w-64 h-full bg-[#2E2D29] text-white flex flex-col z-50 transition-transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6 shrink-0">
             <div className="flex justify-between items-center mb-1">
@@ -378,6 +386,7 @@ function App() {
                 </section>
               </>
             ) : (
+              /* USER MANAGEMENT INTERFACE - PHASE 2 SAFETY UPDATES */
               <section className="px-4 md:px-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="bg-white border-2 border-[#D2BA92] rounded-2xl p-6 mb-8 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
@@ -410,34 +419,54 @@ function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {allUsers.map(user => (
-                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-4">
-                            <p className="font-bold text-sm">{user.email}</p>
-                            <p className="text-[9px] text-gray-400 font-mono uppercase tracking-tighter">UID: {user.id.substring(0,8)}...</p>
-                          </td>
-                          <td className="p-4">
-                            <select 
-                              value={user.role} 
-                              disabled={user.id === session.user.id}
-                              onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
-                              className="text-[10px] font-bold bg-[#F4F4F4] border border-[#D2BA92] p-1.5 rounded outline-none cursor-pointer uppercase"
-                            >
-                              <option value="user">User</option>
-                              <option value="agent">Agent</option>
-                              <option value="admin">Admin</option>
-                            </select>
-                          </td>
-                          <td className="p-4 text-[11px] text-gray-500 italic">
-                            {user.last_login ? formatRelativeTime(user.last_login) : 'Inactive'}
-                          </td>
-                          <td className="p-4 text-right">
-                            <button onClick={() => handleAdminResetPassword(user.id)} className="inline-flex items-center gap-2 text-[10px] font-bold text-[#8C1515] border border-[#8C1515]/20 px-3 py-1.5 rounded hover:bg-[#8C1515] hover:text-white transition-all group">
-                              <KeyRound size={12} className="group-hover:rotate-12 transition-transform" /> Reset Password
-                            </button>
+                      {/* Safety First: Ensure allUsers exists before mapping */}
+                      {allUsers && allUsers.length > 0 ? (
+                        allUsers.map(user => {
+                          // Skip rendering if user object is malformed
+                          if (!user || !user.id) return null;
+
+                          return (
+                            <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-4">
+                                <p className="font-bold text-sm">{user.email || 'Email missing'}</p>
+                                <p className="text-[9px] text-gray-400 font-mono uppercase tracking-tighter">
+                                  UID: {user.id ? user.id.substring(0,8) : 'unknown'}...
+                                </p>
+                              </td>
+                              <td className="p-4">
+                                <select 
+                                  value={user.role || 'user'} 
+                                  disabled={user.id === session?.user?.id}
+                                  onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                                  className="text-[10px] font-bold bg-[#F4F4F4] border border-[#D2BA92] p-1.5 rounded outline-none cursor-pointer uppercase"
+                                >
+                                  <option value="user">User</option>
+                                  <option value="agent">Agent</option>
+                                  <option value="admin">Admin</option>
+                                </select>
+                              </td>
+                              <td className="p-4 text-[11px] text-gray-500 italic">
+                                {formatRelativeTime(user.last_login)}
+                              </td>
+                              <td className="p-4 text-right">
+                                <button 
+                                  onClick={() => handleAdminResetPassword(user.id)} 
+                                  className="inline-flex items-center gap-2 text-[10px] font-bold text-[#8C1515] border border-[#8C1515]/20 px-3 py-1.5 rounded hover:bg-[#8C1515] hover:text-white transition-all group"
+                                >
+                                  <KeyRound size={12} className="group-hover:rotate-12 transition-transform" /> Reset Password
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        /* Empty State Safety */
+                        <tr>
+                          <td colSpan="4" className="p-12 text-center text-gray-400 italic text-xs">
+                            {dataLoading ? 'Fetching records...' : 'No staff records found in public.profiles table.'}
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -483,7 +512,7 @@ function App() {
               <div className="pt-6 border-t">
                 <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-4">
-                  {activities.map((log) => (
+                  {(activities || []).map((log) => (
                     <div key={log.id} className="flex gap-3 text-sm">
                       <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#D2BA92] shrink-0" />
                       <div>
@@ -518,7 +547,7 @@ function App() {
               <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Subject</label><input name="title" required className="w-full border-b-2 py-2 outline-none font-bold text-lg" /></div>
               <div><label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Priority</label>
                 <select name="priority" className="w-full border rounded-xl p-3 font-bold bg-white outline-none">
-                  <option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option>
+                  <option value="low">Low</option><option value="medium" defaultValue>Medium</option><option value="high">High</option>
                 </select>
               </div>
               <button type="submit" className="w-full bg-[#8C1515] text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg">Submit</button>

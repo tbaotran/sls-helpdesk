@@ -1,15 +1,19 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-// Vite uses import.meta.env, NOT process.env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
+// Log to console so you can see if they are loading (Senior dev trick)
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("Missing Supabase Keys! Check your .env.local file.")
+  console.error("CRITICAL: Supabase environment variables are missing!");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
 
-// Add this for your Admin features
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+// Only initialize Admin if the key exists
+export const supabaseAdmin = supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+  : null;
