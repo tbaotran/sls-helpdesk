@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from './lib/supabaseClient';
-import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw, Users, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, User, Settings, Plus, Search, Clock, AlertCircle, CheckCircle2, Trash2, LogOut, ShieldCheck, Download, Menu, X, RefreshCcw, Users, ShieldAlert, KeyRound, UserPlus } from 'lucide-react';
 import Auth from './Auth';
 
 const getPriorityStyles = (priority) => {
@@ -73,6 +73,52 @@ function App() {
       setAllUsers(allUsers.map(u => u.id === userId ? { ...u, role: newRole } : u));
       showToast(`User promoted to ${newRole}`);
     }
+  };
+
+  // ADMIN ACTION: Manual Registration
+  const handleManualRegister = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const email = formData.get('email').toLowerCase().trim();
+    const password = formData.get('password');
+
+    if (password.length < 6) {
+      showToast("Password must be 6+ chars", "error");
+      return;
+    }
+
+    setDataLoading(true);
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true 
+    });
+
+    if (error) {
+      showToast(error.message, "error");
+    } else {
+      showToast("Staff registered successfully!");
+      fetchAllUsers();
+      e.target.reset();
+    }
+    setDataLoading(false);
+  };
+
+  // ADMIN ACTION: Reset Password
+  const handleAdminResetPassword = async (userId) => {
+    const newPassword = prompt("Enter a new temporary password for this user:");
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      showToast("Password too short", "error");
+      return;
+    }
+
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+      password: newPassword
+    });
+
+    if (error) showToast(error.message, "error");
+    else showToast("User password updated!");
   };
 
   useEffect(() => {
@@ -249,42 +295,29 @@ function App() {
           </div>
 
           <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
-            {/* Dashboard Button with Gold Hover */}
             <button 
               onClick={() => {setActiveTab('dashboard'); setIsSidebarOpen(false);}}
               className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition-all duration-200 group ${
-                activeTab === 'dashboard' 
-                ? 'bg-[#8C1515] text-white shadow-md' 
-                : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'
+                activeTab === 'dashboard' ? 'bg-[#8C1515] text-white shadow-md' : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'
               }`}
             >
-              <LayoutDashboard size={20} className={`transition-colors ${activeTab === 'dashboard' ? 'text-white' : 'group-hover:text-[#D2BA92]'}`} /> 
-              Dashboard
+              <LayoutDashboard size={20} className={activeTab === 'dashboard' ? 'text-white' : 'group-hover:text-[#D2BA92]'} /> Dashboard
             </button>
             
-            {/* User Management Button with Gold Hover */}
             {userRole === 'admin' && (
               <button 
                 onClick={() => {setActiveTab('users'); setIsSidebarOpen(false);}}
                 className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition-all duration-200 group ${
-                  activeTab === 'users' 
-                  ? 'bg-[#8C1515] text-white shadow-md' 
-                  : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'
+                  activeTab === 'users' ? 'bg-[#8C1515] text-white shadow-md' : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'
                 }`}
               >
-                <Users size={20} className={`transition-colors ${activeTab === 'users' ? 'text-white' : 'group-hover:text-[#D2BA92]'}`} /> 
-                User Management
+                <Users size={20} className={activeTab === 'users' ? 'text-white' : 'group-hover:text-[#D2BA92]'} /> User Management
               </button>
             )}
 
-            {/* Export Button with Gold Hover */}
             {(userRole === 'admin' || userRole === 'agent') && (
-              <button 
-                onClick={exportToCSV} 
-                className="flex items-center gap-3 w-full p-3 text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92] transition-all duration-200 rounded-lg font-bold uppercase text-[10px] group"
-              >
-                <Download size={18} className="group-hover:text-[#D2BA92] transition-colors" /> 
-                Export Report
+              <button onClick={exportToCSV} className="flex items-center gap-3 w-full p-3 text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92] transition-all duration-200 rounded-lg font-bold uppercase text-[10px] group">
+                <Download size={18} className="group-hover:text-[#D2BA92]" /> Export Report
               </button>
             )}
           </nav>
@@ -347,7 +380,30 @@ function App() {
                 </section>
               </>
             ) : (
+              /* USER MANAGEMENT INTERFACE */
               <section className="px-4 md:px-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* MANUAL REGISTRATION FORM */}
+                <div className="bg-white border-2 border-[#D2BA92] rounded-2xl p-6 mb-8 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <UserPlus size={18} className="text-[#8C1515]" />
+                    <h3 className="font-serif font-bold text-[#8C1515] text-lg">Register New Staff Manually</h3>
+                  </div>
+                  <form onSubmit={handleManualRegister} className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Staff Email</label>
+                      <input name="email" placeholder="sunetid@stanford.edu" required className="w-full border-b-2 border-[#D2BA92] p-2 outline-none focus:border-[#8C1515] text-sm font-bold" />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Temporary Password</label>
+                      <input name="password" type="password" placeholder="Min 6 characters" required className="w-full border-b-2 border-[#D2BA92] p-2 outline-none focus:border-[#8C1515] text-sm font-bold" />
+                    </div>
+                    <button type="submit" disabled={dataLoading} className="bg-[#8C1515] text-white px-8 py-2.5 rounded shadow-lg font-bold uppercase text-[10px] tracking-widest disabled:opacity-50 h-fit">
+                      {dataLoading ? 'Processing...' : 'Create Account'}
+                    </button>
+                  </form>
+                </div>
+
+                {/* USER LIST TABLE */}
                 <div className="bg-white border-2 border-[#D2BA92] rounded-2xl shadow-sm overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-[#F4F4F4] text-[10px] uppercase font-bold text-gray-500 tracking-widest border-b-2 border-[#D2BA92]">
@@ -355,7 +411,7 @@ function App() {
                         <th className="p-4">Stanford Identity</th>
                         <th className="p-4">Assigned Role</th>
                         <th className="p-4">Last Active</th>
-                        <th className="p-4 text-right">Actions</th>
+                        <th className="p-4 text-right">Access Controls</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -363,36 +419,43 @@ function App() {
                         <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                           <td className="p-4">
                             <p className="font-bold text-sm">{user.email}</p>
-                            <p className="text-[10px] text-gray-400 font-mono">{user.id}</p>
+                            <p className="text-[9px] text-gray-400 font-mono uppercase tracking-tighter">UID: {user.id.substring(0,8)}...</p>
                           </td>
                           <td className="p-4">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${
-                              user.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
-                              user.role === 'agent' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
-                              'bg-gray-50 text-gray-600 border-gray-200'
-                            }`}>
-                              {user.role}
-                            </span>
-                          </td>
-                          <td className="p-4 text-xs text-gray-500 italic">
-                            {user.last_login ? formatRelativeTime(user.last_login) : 'Never'}
-                          </td>
-                          <td className="p-4 text-right">
                             <select 
                               value={user.role} 
                               disabled={user.id === session.user.id}
                               onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
-                              className="text-[11px] font-bold bg-[#F4F4F4] border border-[#D2BA92] p-1.5 rounded outline-none cursor-pointer uppercase"
+                              className="text-[10px] font-bold bg-[#F4F4F4] border border-[#D2BA92] p-1.5 rounded outline-none cursor-pointer uppercase"
                             >
                               <option value="user">User</option>
                               <option value="agent">Agent</option>
                               <option value="admin">Admin</option>
                             </select>
                           </td>
+                          <td className="p-4 text-[11px] text-gray-500 italic">
+                            {user.last_login ? formatRelativeTime(user.last_login) : 'Inactive'}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button 
+                              onClick={() => handleAdminResetPassword(user.id)}
+                              className="inline-flex items-center gap-2 text-[10px] font-bold text-[#8C1515] border border-[#8C1515]/20 px-3 py-1.5 rounded hover:bg-[#8C1515] hover:text-white transition-all group"
+                            >
+                              <KeyRound size={12} className="group-hover:rotate-12 transition-transform" />
+                              Reset Password
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                  <ShieldAlert className="text-amber-600 shrink-0" size={20} />
+                  <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                    Manual Registration bypasses the standard email verification loop. Users created here can log in immediately using the temporary password provided. Encourage them to update their credentials upon first login.
+                  </p>
                 </div>
               </section>
             )}
@@ -423,9 +486,9 @@ function App() {
             <div className="p-6 md:p-10 space-y-8 overflow-y-auto flex-1 font-sans">
               <div>
                 <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded border ${getPriorityStyles(selectedTicket.priority)}`}>{selectedTicket.priority} Priority</span>
-                <h1 className="text-3xl font-serif font-bold text-[#2E2D29] leading-tight mt-4">{selectedTicket.title}</h1>
+                <h1 className="text-3xl font-serif font-bold text-[#2E2D29] mt-4">{selectedTicket.title}</h1>
               </div>
-              <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-sm leading-relaxed">"{selectedTicket.description || 'No description provided.'}"</div>
+              <div className="p-6 bg-gray-50 border border-gray-100 rounded-xl italic text-sm">"{selectedTicket.description || 'No description provided.'}"</div>
               <div className="pt-6 border-t">
                 <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-4">Activity Log</label>
                 <div className="space-y-4">
