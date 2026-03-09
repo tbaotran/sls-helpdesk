@@ -76,7 +76,6 @@ function App() {
     }
   };
 
-  // STEP 2: Update Manual Registration to use supabaseAdmin
   const handleManualRegister = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -89,24 +88,25 @@ function App() {
     }
 
     setDataLoading(true);
-    // Use the admin client to bypass RLS and auto-confirm
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true 
-    });
+    try {
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true 
+      });
 
-    if (error) {
-      showToast(error.message, "error");
-    } else {
+      if (error) throw error;
+
       showToast("Staff registered successfully!");
       fetchAllUsers();
       e.target.reset();
+    } catch (err) {
+      showToast(err.message || "Admin access denied", "error");
+    } finally {
+      setDataLoading(false);
     }
-    setDataLoading(false);
   };
 
-  // STEP 3: Update Reset Password to use supabaseAdmin
   const handleAdminResetPassword = async (userId) => {
     const newPassword = prompt("Enter a new temporary password for this user:");
     if (!newPassword) return;
@@ -115,13 +115,15 @@ function App() {
       return;
     }
 
-    // Use the admin client to update password without a reset link
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-      password: newPassword
-    });
-
-    if (error) showToast(error.message, "error");
-    else showToast("User password updated!");
+    try {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: newPassword
+      });
+      if (error) throw error;
+      showToast("User password updated!");
+    } catch (err) {
+      showToast(err.message || "Failed to reset password", "error");
+    }
   };
 
   useEffect(() => {
@@ -274,16 +276,13 @@ function App() {
         .font-serif { font-family: 'Source Serif 4', serif !important; }
       `}</style>
 
-      {/* Identity Bar */}
       <div className="bg-[#8C1515] h-[30px] flex items-center px-4 md:px-8 text-white text-[11px] md:text-[13px] font-bold uppercase tracking-wide shrink-0 z-50">
         Stanford University
       </div>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Mobile Overlay */}
         {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
-        {/* Sidebar */}
         <aside className={`fixed lg:relative w-64 h-full bg-[#2E2D29] text-white flex flex-col z-50 transition-transform lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6 shrink-0">
             <div className="flex justify-between items-center mb-1">
@@ -300,9 +299,7 @@ function App() {
           <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
             <button 
               onClick={() => {setActiveTab('dashboard'); setIsSidebarOpen(false);}}
-              className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition-all duration-200 group ${
-                activeTab === 'dashboard' ? 'bg-[#8C1515] text-white shadow-md' : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'
-              }`}
+              className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition-all duration-200 group ${activeTab === 'dashboard' ? 'bg-[#8C1515] text-white shadow-md' : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'}`}
             >
               <LayoutDashboard size={20} className={activeTab === 'dashboard' ? 'text-white' : 'group-hover:text-[#D2BA92]'} /> Dashboard
             </button>
@@ -310,9 +307,7 @@ function App() {
             {userRole === 'admin' && (
               <button 
                 onClick={() => {setActiveTab('users'); setIsSidebarOpen(false);}}
-                className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition-all duration-200 group ${
-                  activeTab === 'users' ? 'bg-[#8C1515] text-white shadow-md' : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'
-                }`}
+                className={`flex items-center gap-3 w-full p-3 rounded-lg font-bold transition-all duration-200 group ${activeTab === 'users' ? 'bg-[#8C1515] text-white shadow-md' : 'text-gray-400 hover:bg-[#D2BA92]/10 hover:text-[#D2BA92]'}`}
               >
                 <Users size={20} className={activeTab === 'users' ? 'text-white' : 'group-hover:text-[#D2BA92]'} /> User Management
               </button>
@@ -383,9 +378,7 @@ function App() {
                 </section>
               </>
             ) : (
-              /* USER MANAGEMENT INTERFACE */
               <section className="px-4 md:px-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* MANUAL REGISTRATION FORM */}
                 <div className="bg-white border-2 border-[#D2BA92] rounded-2xl p-6 mb-8 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <UserPlus size={18} className="text-[#8C1515]" />
@@ -406,7 +399,6 @@ function App() {
                   </form>
                 </div>
 
-                {/* USER LIST TABLE */}
                 <div className="bg-white border-2 border-[#D2BA92] rounded-2xl shadow-sm overflow-hidden">
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-[#F4F4F4] text-[10px] uppercase font-bold text-gray-500 tracking-widest border-b-2 border-[#D2BA92]">
@@ -440,12 +432,8 @@ function App() {
                             {user.last_login ? formatRelativeTime(user.last_login) : 'Inactive'}
                           </td>
                           <td className="p-4 text-right">
-                            <button 
-                              onClick={() => handleAdminResetPassword(user.id)}
-                              className="inline-flex items-center gap-2 text-[10px] font-bold text-[#8C1515] border border-[#8C1515]/20 px-3 py-1.5 rounded hover:bg-[#8C1515] hover:text-white transition-all group"
-                            >
-                              <KeyRound size={12} className="group-hover:rotate-12 transition-transform" />
-                              Reset Password
+                            <button onClick={() => handleAdminResetPassword(user.id)} className="inline-flex items-center gap-2 text-[10px] font-bold text-[#8C1515] border border-[#8C1515]/20 px-3 py-1.5 rounded hover:bg-[#8C1515] hover:text-white transition-all group">
+                              <KeyRound size={12} className="group-hover:rotate-12 transition-transform" /> Reset Password
                             </button>
                           </td>
                         </tr>
@@ -457,7 +445,7 @@ function App() {
                 <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
                   <ShieldAlert className="text-amber-600 shrink-0" size={20} />
                   <p className="text-xs text-amber-800 font-bold leading-relaxed">
-                    Manual Registration bypasses the standard email verification loop. Users created here can log in immediately using the temporary password provided. Encourage them to update their credentials upon first login.
+                    Manual Registration bypasses the standard email verification loop. Users created here can log in immediately using the temporary password provided.
                   </p>
                 </div>
               </section>

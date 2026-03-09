@@ -1,14 +1,14 @@
-import { createClient } from '@supabase/supabase-backend-js'; // Use backend-js if available, otherwise standard createClient
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-// 1. Standard Client (For login, tickets, etc.)
+// Standard client for public/user actions
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// 2. Admin Client (For Manual User Creation & Password Resets)
-// This client bypasses RLS and can manage all users
+// Admin client for Manual Registration & Password Resets
+// Note: This only works if VITE_SUPABASE_SERVICE_ROLE_KEY is provided
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
