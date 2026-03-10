@@ -146,11 +146,16 @@ function App() {
 
   useEffect(() => {
     if (!session) return;
-    async function getProfile() {
-      const { data } = await supabase.from('profiles').select('role, last_login').eq('id', session.user.id).single();
-
-          console.log("Profile Data:", data); // THIS WILL TELL US THE TRUTH
-          console.log("Profile Error:", error);
+   async function getProfile() {
+  // Add 'error' inside the curly braces below
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role, last_login')
+    .eq('id', session.user.id)
+    .single();
+  
+  console.log("Profile Data:", data);
+  if (error) console.log("Profile Error:", error); // Now 'error' is defined!
 
       if (data) { 
         setUserRole(data.role || 'user');
