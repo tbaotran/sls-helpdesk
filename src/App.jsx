@@ -148,6 +148,10 @@ function App() {
     if (!session) return;
     async function getProfile() {
       const { data } = await supabase.from('profiles').select('role, last_login').eq('id', session.user.id).single();
+
+          console.log("Profile Data:", data); // THIS WILL TELL US THE TRUTH
+          console.log("Profile Error:", error);
+
       if (data) { 
         setUserRole(data.role || 'user');
         setLastLogin(data.last_login); 
